@@ -1,13 +1,17 @@
 // fms_mkl.h - Intel MKL wrappers
 // https://software.intel.com/content/www/us/en/develop/tools/oneapi/base-toolkit/download.html?operatingsystem=window&distributions=webdownload&options=offline
 #pragma once
+#include <compare>
 #include <valarray>
 #include <mkl.h>
+#ifdef _DEBUG
+#include <cassert>
+#endif
 
 namespace mkl {
 
-	// r x c matrix
-	template<class X = double>
+	// r x c matrix view of preallocated memory
+	template<class X>
 	class matrix {
 		int r, c; // leading dimension???
 		X* a = nullptr;
@@ -48,13 +52,23 @@ namespace mkl {
 		matrix(int r, int c, X* a)
 			: r(r), c(c), a(a)
 		{ }
+		matrix(int n, X* a)
+			: r(abs(n)), c(abs(n)), a(a), ul(n > 0 ? CblasUpper : CblasLower), pack(true)
+		{ }
 		matrix(const matrix&) = default;
 		matrix& operator=(const matrix&) = default;
-		matrix(matrix&&) = default;
-		matrix& operator=(matrix&&) = default;
 		~matrix()
 		{ }
 
+		auto operator<=>(const matrix&) const = default;
+		bool equal(const matrix& m) const
+		{
+			for (int i = 0; i < rows(); ++i)
+				for (int j = 0; j < rows(); ++j)
+					if ((*this)(i, j) != m(i, j))
+						return false;
+			return true;
+		}
 
 		int rows() const
 		{
@@ -95,14 +109,17 @@ namespace mkl {
 
 			return *this;
 		}
+
 		CBLAS_UPLO uplo() const
 		{
 			return ul;
 		}
+
 		CBLAS_DIAG unit() const
 		{
 			return diag;
 		}
+
 		bool packed() const
 		{
 			return pack;
@@ -116,6 +133,17 @@ namespace mkl {
 		{
 			return a[index(i, j)];
 		}
+#ifdef _DEBUG
+		static inline int test()
+		{
+			{
+				matrix m;
+				//assert(!m);
+			}
+
+			return 0;
+		}
+#endif // _DEBUG
 	};
 
 	namespace blas {
@@ -161,5 +189,15 @@ namespace mkl {
 		}
 
 	}
+#ifdef _DEBUG
+	inline int test()
+	{
+		{
+			mkl::matrix<double>::test();
+		}
+
+		return 0;
+	}
+#endif // _DEBUG
 
 } // namespace mkl

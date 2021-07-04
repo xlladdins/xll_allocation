@@ -70,3 +70,7 @@ _FPX* WINAPI xll_mkl_lapack_potrf(_FPX* pa)
 
 	return pa;
 }
+
+#ifdef _DEBUG
+Auto<OpenAfter> xaoa_mkl_test(mkl::test);
+#endif // _DEBUG
