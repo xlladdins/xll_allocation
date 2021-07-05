@@ -202,7 +202,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="xll_allocation.cpp" />
-    <ClCompile Include="xll_mkl.cpp" />
+    <ClCompile Include="xll_lapack.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="setup.bat" />
@@ -214,7 +214,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fms_allocation.h" />
-    <ClInclude Include="fms_mkl.h" />
     <ClInclude Include="xll_allocation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

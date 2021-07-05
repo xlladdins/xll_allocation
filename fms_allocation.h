@@ -2,7 +2,7 @@
 // https://arxiv.org/pdf/2009.10852.pdf
 #pragma once
 #include <valarray>
-#include "fms_mkl.h"
+#include "fms_blas/fms_blas.h"
 
 namespace fms::allocation {
 
@@ -12,12 +12,13 @@ namespace fms::allocation {
 		std::valarray<double> EX; // expected returns
 		std::valarray<double> Sigma; // corresponding volatilities
 		std::valarray<double> rho; // upper Cholesky correlation factor
-		std::valarray<double> V_; // inverse of covariance
+		std::valarray<double> V_; // inverse of covariance matrix
 		std::valarray<double> xi; // optimal portfolio
 	public:
 		portfolio(int n, const double* x, const double* EX, const double* Sigma, const double* rho)
 			: n(n), x(x, n), EX(EX, n), Sigma(Sigma, n), rho(rho, n*n), V_(n * n), xi(n)
 		{
+			// V_ = inv(Sigma rho rho' Sigma')
 			//mkl::blas::gemm(mkl::matrix(n, n, &rho[0]), mkl::matrix(n, 1, &Sigma[0]), &V_[0]);
 		}
 		// minimize variance given target return

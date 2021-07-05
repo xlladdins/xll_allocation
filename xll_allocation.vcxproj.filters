@@ -18,7 +18,7 @@
     <ClCompile Include="xll_allocation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xll_mkl.cpp">
+    <ClCompile Include="xll_lapack.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -32,9 +32,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="xll_allocation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fms_mkl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
