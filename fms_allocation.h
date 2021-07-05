@@ -9,8 +9,8 @@ namespace fms::allocation {
 	class portfolio {
 		int n; // dimension
 		std::valarray<double> x; // initial prices
-		std::valarray<double> EX; // expected returns
-		std::valarray<double> Sigma; // corresponding volatilities
+		std::valarray<double> EX; // expected future prices
+		std::valarray<double> Sigma; // volatilities
 		std::valarray<double> rho; // upper Cholesky correlation factor
 		std::valarray<double> V_; // inverse of covariance matrix
 		std::valarray<double> xi; // optimal portfolio
