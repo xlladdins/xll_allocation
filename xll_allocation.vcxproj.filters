@@ -26,6 +26,7 @@
     <None Include="setup.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fms_allocation.h">

@@ -205,6 +205,7 @@
     <ClCompile Include="xll_lapack.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="README.md" />
     <None Include="setup.bat" />
   </ItemGroup>
   <ItemGroup>

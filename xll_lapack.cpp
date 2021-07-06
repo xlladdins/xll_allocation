@@ -6,27 +6,69 @@ using namespace blas;
 using namespace lapack;
 using namespace xll;
 
-#define CATEGORY "MKL"
+#define CATEGORY "LAPACK"
 
-inline auto fpmatrix(_FPX* pa)
+
+void xerbla(const char* srname, const int* info, const int)
 {
-	return blas::matrix(pa->rows, pa->columns, pa->array);
-}
-inline auto fpmatrix(const _FPX* pa)
-{
-	return blas::matrix(pa->rows, pa->columns, pa->array);
+	char buf[256];
+
+	if (*info < 0) {
+		sprintf_s(buf, "%s: parameter %d had an illegal value", srname, -*info);
+	}
+	else if (*info == 1001) {
+		sprintf_s(buf, "%s: incompatible optional parameters", srname);
+	}
+	else if (*info == 1000 or *info == 1089) {
+		sprintf_s(buf, "%s: insufficient workspace available", srname);
+	}
+	else if (info > 0) {
+		sprintf_s(buf, "%s: returned error code %d", srname, *info);
+	}
+
+	XLL_ERROR(buf);
 }
 
-AddIn xai_mkl_blas_gemm(
-	Function(XLL_FPX, "xll_mkl_blas_gemm", "BLAS.GEMM")
+void LAPACKE_xerbla(const char* name, lapack_int info)
+{
+	char buf[256];
+
+	if (info < 0) {
+		sprintf_s(buf, "%s: parameter %d had an illegal value", name, -info);
+	}
+	else if (info == LAPACK_WORK_MEMORY_ERROR) {
+		sprintf_s(buf, "%s: not enough memory to allocate work array", name);
+	}
+	else if (info == LAPACK_TRANSPOSE_MEMORY_ERROR) {
+		sprintf_s(buf, "%s: not enough memory to transpose matrix", name);
+	}
+	else if (info > 0) {
+		sprintf_s(buf, "%s: returned error code %d", name, info);
+	}
+
+	XLL_ERROR(buf);
+}
+
+inline blas::matrix<double> fpmatrix(_FPX* pa)
+{
+	return blas::matrix<double>(pa->rows, pa->columns, pa->array);
+}
+
+inline const blas::matrix<const double> fpmatrix(const _FPX* pa)
+{
+	return blas::matrix<const double>(pa->rows, pa->columns, pa->array);
+}
+
+AddIn xai_blas_gemm(
+	Function(XLL_FPX, "xll_blas_gemm", "BLAS.GEMM")
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a matrix."),
 		Arg(XLL_FPX, "b", "is a matrix."),
 		})
-		.Category(CATEGORY)
+	.Category("BLAS")
 	.FunctionHelp("Return the matrix product of a and b.")
 );
-_FPX* WINAPI xll_mkl_blas_gemm(_FPX* pa, _FPX* pb)
+_FPX* WINAPI xll_blas_gemm(const _FPX* pa, const _FPX* pb)
 {
 #pragma XLLEXPORT
 	static FPX c;
@@ -35,7 +77,7 @@ _FPX* WINAPI xll_mkl_blas_gemm(_FPX* pa, _FPX* pb)
 		ensure(pa->columns == pb->rows);
 
 		c.resize(pa->rows, pb->columns);
-		blas::gemm(fpmatrix(pa), fpmatrix(pb), c.array());
+		//blas::gemm(fpmatrix(pa), fpmatrix(pb), c.array());
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -50,23 +92,23 @@ _FPX* WINAPI xll_mkl_blas_gemm(_FPX* pa, _FPX* pb)
 	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
 	"lapack-linear-equation-computational-routines/matrix-factorization-lapack-computational-routines/potrf.html"
 
-AddIn xai_mkl_lapack_potrf(
-	Function(XLL_FPX, "xll_mkl_lapack_potrf", "LAPACK.POTRF")
+AddIn xai_lapack_potrf(
+	Function(XLL_FPX, "xll_lapack_potrf", "LAPACK.POTRF")
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a matrix."),
 		Arg(XLL_BOOL, "_lower", "is an optional boolean indicating lower decomposition. Default is upper."),
-		Arg(XLL_BOOL, "_nofill", "is an optional boolean indicated unused values are not set to 0. Default is false.")
+		Arg(XLL_BOOL, "_nofill", "is an optional boolean indicated unused values are not set to 0. Default is false."),
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Return the upper or lower Cholesky decomposition of a.")
-	.HelpTopic(POTRF_TOPIC)
+	//.HelpTopic(POTRF_TOPIC)
 	.Documentation(R"(
 This function calculates the Cholesky decomposition of a symmetric positive definite matrix \(A\).
 The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
 prime indicates matrix transpose. Only the upper or lower entries of \(A\) are used.
 )")
 );
-_FPX* WINAPI xll_mkl_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
+_FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 {
 #pragma XLLEXPORT
 	try {
@@ -78,27 +120,17 @@ _FPX* WINAPI xll_mkl_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 		else
 			a.upper();
 
-		int ret = lapack::potrf(a);
-		if (ret != 0) {
-			char buf[64];
-			if (ret < 0) {
-				sprintf_s(buf, sizeof(buf), "dpotrf: parameter %d had an illegal value", -ret);
-			}
-			else {
-				sprintf_s(buf, sizeof(buf), "dpotrf: the leading minor of order %d is not positive definite", ret);
-			}
-			XLL_ERROR(buf);
-		}
+		lapack::potrf(a);
 
 		if (nofill == FALSE) {
-			if (a.uplo() == CblasUpper) {
-				for (int i = 1; i < a.rows(); ++i)
-					for (int j = 0; j < i; ++j)
-						a(i, j) = 0;
-			}
-			else { // lower
+			if (lower) {
 				for (int i = 0; i < a.rows(); ++i)
 					for (int j = i + 1; j < a.columns(); ++j)
+						a(i, j) = 0;
+			}
+			else { // upper
+				for (int i = 1; i < a.rows(); ++i)
+					for (int j = 0; j < i; ++j)
 						a(i, j) = 0;
 			}
 		}
@@ -116,21 +148,23 @@ _FPX* WINAPI xll_mkl_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
 	"lapack-linear-equation-computational-routines/matrix-inversion-lapack-computational-routines/potri.html"
 
-AddIn xai_mkl_lapack_potri(
-	Function(XLL_FPX, "xll_mkl_lapack_potri", "LAPACK.POTRI")
+AddIn xai_lapack_potri(
+	Function(XLL_FPX, "xll_lapack_potri", "LAPACK.POTRI")
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a matrix."),
 		Arg(XLL_BOOL, "_lower", "is an optional boolean indicating lower triangular data. Default is upper.")
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Return the inverse of a symmetric positive definite matrix a.")
-	.HelpTopic(POTRI_TOPIC)
+	//.HelpTopic(POTRI_TOPIC)
 	.Documentation(R"(
-Return the inverse of the symmetric positive definite matrix <code>A/code>
+Return the inverse of the symmetric positive definite matrix <code>A</code>
 using the Cholesky decomposition. Only the upper or lower entries of \(A\) are used.
+The <code>POTRF</code> function must be called on <code>a</code> prior to calling
+<code>POTRI</code>.
 )")
 );
-_FPX* WINAPI xll_mkl_lapack_potri(_FPX* pa, BOOL lower)
+_FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 {
 #pragma XLLEXPORT
 	try {
@@ -142,19 +176,7 @@ _FPX* WINAPI xll_mkl_lapack_potri(_FPX* pa, BOOL lower)
 		else
 			a.upper();
 
-		xll_mkl_lapack_potrf(pa, lower, TRUE);
-
-		int ret = lapack::potri(a);
-		if (ret != 0) {
-			char buf[64];
-			if (ret < 0) {
-				sprintf_s(buf, sizeof(buf), "dpotri: parameter %d had an illegal value", -ret);
-			}
-			else {
-				sprintf_s(buf, sizeof(buf), "dpotri: the %d-th diagonal element of the Cholesky factor is zero, and the inversion could not be completed", ret);
-			}
-			XLL_ERROR(buf);
-		}
+		lapack::potri(a);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
