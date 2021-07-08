@@ -202,6 +202,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="xll_allocation.cpp" />
+    <ClCompile Include="xll_correlation.cpp" />
     <ClCompile Include="xll_lapack.cpp" />
   </ItemGroup>
   <ItemGroup>
