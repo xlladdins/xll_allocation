@@ -13,14 +13,14 @@ using the Cholesky decomposition of the correlation matrix. The rows
 of the lower decompsition are the \((e_i\).
 )xyzyx";
 	template<class X = double>
-	class correlation : public blas::matrix<X, CblasNoTrans, CblasLower> {
+	class correlation : public blas::matrix<X> {
 		std::valarray<X> _e; // lower Cholesky factor
 	public:
-		using blas::matrix<X, CblasNoTrans, CblasLower>::operator();
-		using blas::matrix<X, CblasNoTrans, CblasLower>::resize;
-		using blas::matrix<X, CblasNoTrans, CblasLower>::row;
-		using blas::matrix<X, CblasNoTrans, CblasLower>::rows;
-		using blas::matrix<X, CblasNoTrans, CblasLower>::transpose;
+		using blas::matrix<X>::operator();
+		using blas::matrix<X>::resize;
+		using blas::matrix<X>::row;
+		using blas::matrix<X>::rows;
+		using blas::matrix<X>::transpose;
 
 		static inline const char doc[] = R"xyzyx(
 		Packed rows of the correlation matrix without the unit diagonal.
@@ -30,7 +30,7 @@ of the lower decompsition are the \((e_i\).
 			"is a pointer to an array of n*(n-1)/2 packed correlations",
 		};
 		correlation(int n, const X* rho)
-			: blas::matrix<X, CblasNoTrans, CblasLower>(n, n), _e(n * n)
+			: blas::matrix<X>(n, n), _e(n * n)
 		{
 			resize(n, n, &_e[0]);
 
@@ -42,10 +42,10 @@ of the lower decompsition are the \((e_i\).
 				}
 			}
 
-			lapack::potrf(*this);
+			lapack::potrf<X>(*this); // lower
 		}
 		correlation(const correlation& rho)
-			: blas::matrix<X, CblasNoTrans, CblasLower>(rho.rows(), rho.columns()), _e(rho.size())
+			: blas::matrix<X>(rho.rows(), rho.columns()), _e(rho.size())
 		{ 
 			_e = rho._e;
 			resize(rho.rows(), rho.columns(), &_e[0]);
@@ -62,23 +62,34 @@ of the lower decompsition are the \((e_i\).
 		~correlation()
 		{ }
 
+		static inline const char dimension_doc[] = R"xyzyx(
+		Return the dimension of the correlation matrix.
+)xyzyx";
 		int dimension() const
 		{
 			return rows();
 		}
 
-		// underlying correlation matrix
+		static inline const char get_doc[] = R"xyzyx(
+		Return the underlying correlation matrix in preallocated array.
+)xyzyx";
+		// 
 		void get(X* cor) const
 		{
 			blas::gemm(*this, transpose(), cor);
 		}
 
-		// get i, j correlation
+		static inline const char rho_doc[] = R"xyzyx(
+		Return the i, j correlation.
+)xyzyx";
 		X rho(int i, int j) const
 		{
 			return blas::dot(row(i), row(j));
 		}
-		// set i, j correlation to r_ij by rotating e_i along e_j
+		 
+		static inline const char rho_set_doc[] = R"xyzyx(
+		Set i, j correlation to r_ij by rotating e_i along e_j.
+)xyzyx";
 		correlation& rho(int i, int j, X r_ij)
 		{
 			static X eps = sqrt(std::numeric_limits<X>::epsilon());
@@ -105,9 +116,10 @@ of the lower decompsition are the \((e_i\).
 			X D = B * B - A * C;
 			// largest cos gives smallest theta
 			X c = fabs(A) > eps ? (-B + copysign(sqrt(D), A)) / A : C / (B + copysign(sqrt(D), B));
+			X s = sqrt(1 - c * c);
 
 			blas::scal<X>(c, row(i));
-			blas::axpy<X>(sqrt(1 - c * c), row(j), row(i));
+			blas::axpy<X>(s, row(j), row(i));
 
 			return *this;
 		}

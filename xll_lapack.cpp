@@ -111,18 +111,10 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 {
 #pragma XLLEXPORT
 	try {
-		ensure(pa->columns == pa->rows);
-
-		if (lower) {
-			auto a = fpmatrix(pa).uplo<CblasLower>();
-			lapack::potrf(a);
-		}
-		else {
-			auto a = fpmatrix(pa).uplo<CblasUpper>();
-			lapack::potrf(a);
-		}
+		ensure(pa->columns == pa->rows); // fix up ld???
 
 		auto a = fpmatrix(pa);
+		lapack::potrf(a, lower ? CblasLower : CblasUpper);
 
 		if (nofill == FALSE) {
 			if (lower) {
@@ -136,6 +128,7 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 						a(i, j) = 0;
 			}
 		}
+		// a[upper] = 0 ???
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -172,14 +165,8 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 	try {
 		ensure(pa->columns == pa->rows);
 
-		if (lower) {
-			auto a = fpmatrix(pa).uplo<CblasLower>();
-			lapack::potri(a);
-		}
-		else {
-			auto a = fpmatrix(pa).uplo<CblasUpper>();
-			lapack::potri(a);
-		}
+		auto a = fpmatrix(pa);
+		lapack::potri(a, lower ? CblasLower : CblasUpper);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
