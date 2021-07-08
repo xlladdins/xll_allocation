@@ -35,5 +35,11 @@
     <ClInclude Include="xll_allocation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fms_correlation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="fms_covariance.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
