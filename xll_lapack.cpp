@@ -1,5 +1,5 @@
 // xll_lapack.cpp - Intel MKL routines
-#include "fms_blas/fms_blas.h"
+#include "fms_blas/fms_lapack.h"
 #include "xll/xll/xll.h"
 
 using namespace blas;
@@ -7,7 +7,6 @@ using namespace lapack;
 using namespace xll;
 
 #define CATEGORY "LAPACK"
-
 
 void xerbla(const char* srname, const int* info, const int)
 {
@@ -114,13 +113,16 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 	try {
 		ensure(pa->columns == pa->rows);
 
-		auto a = fpmatrix(pa);
-		if (lower)
-			a.lower();
-		else
-			a.upper();
+		if (lower) {
+			auto a = fpmatrix(pa).uplo<CblasLower>();
+			lapack::potrf(a);
+		}
+		else {
+			auto a = fpmatrix(pa).uplo<CblasUpper>();
+			lapack::potrf(a);
+		}
 
-		lapack::potrf(a);
+		auto a = fpmatrix(pa);
 
 		if (nofill == FALSE) {
 			if (lower) {
@@ -170,13 +172,14 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 	try {
 		ensure(pa->columns == pa->rows);
 
-		auto a = fpmatrix(pa);
-		if (lower)
-			a.lower();
-		else
-			a.upper();
-
-		lapack::potri(a);
+		if (lower) {
+			auto a = fpmatrix(pa).uplo<CblasLower>();
+			lapack::potri(a);
+		}
+		else {
+			auto a = fpmatrix(pa).uplo<CblasUpper>();
+			lapack::potri(a);
+		}
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
