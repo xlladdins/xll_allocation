@@ -72,7 +72,7 @@ of the lower decomposition are the \((e_i\).
 		static inline const char get_doc[] = R"xyzyx(
 		Return the underlying correlation matrix in preallocated array.
 )xyzyx";
-		// 
+		// fill cor with correlations
 		blas::matrix<X> get(X* cor) const
 		{
 			return blas::gemm(*this, transpose(), cor);
@@ -117,6 +117,7 @@ of the lower decomposition are the \((e_i\).
 			X c = fabs(A) > eps ? (-B + copysign(sqrt(D), A)) / A : C / (B + copysign(sqrt(D), B));
 			X s = sqrt(1 - c * c);
 
+			// row(i) = c row(i) + s row(j)
 			blas::scal<X>(c, row(i));
 			blas::axpy<X>(s, row(j), row(i));
 

@@ -3,31 +3,44 @@
 #pragma once
 #include <valarray>
 #include "fms_blas/fms_lapack.h"
+#include "fms_correlation.h"
 
 namespace fms::allocation {
 
+	// xi = V^-1(lamba x + mu E[X])
+	template<class X>
 	class portfolio {
-		int n; // dimension
-		std::valarray<double> x; // initial prices
-		std::valarray<double> EX; // expected future prices
-		std::valarray<double> Sigma; // volatilities
-		std::valarray<double> rho; // upper Cholesky correlation factor
-		std::valarray<double> V_; // inverse of covariance matrix
-		std::valarray<double> xi; // optimal portfolio
+		std::valarray<X> ER; // expected realized return
+		std::valarray<X> Sigma; // volatilities
+		fms::correlation<X> rho; // lower Cholesky correlation unit vectors
+
+		blas::vector_array<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
+		X A, B, C, D;
 	public:
-		portfolio(int n, const double* x, const double* EX, const double* Sigma, const double* rho)
-			: n(n), x(x, n), EX(EX, n), Sigma(Sigma, n), rho(rho, n*n), V_(n * n), xi(n)
+		portfolio(int n, const X* x, const X* ER, const X* Sigma, const correlation<X>& rho)
+			: ER(ER, n), Sigma(Sigma, n), rho(rho)
 		{
-			// V_ = inv(Sigma rho rho' Sigma')
-			//mkl::blas::gemm(mkl::matrix(n, n, &rho[0]), mkl::matrix(n, 1, &Sigma[0]), &V_[0]);
+			// calculate V_x, V_ER
+			A = 0; // x V_x, x = {1,1, ...}
+			B = 0;  // x V_EX
+			C = 0; // E[x] V_EX
+			D = B * B - A * C;
 		}
 		// minimize variance given target return
-		double* minimize(double R, double* X)
+		// optimal porfolio is put in xi
+		// minimum variance is returned
+		X minimize(X R, X* _xi)
 		{
-			
-			R = *X;
+			X lambda = (C - R * B) / D;
+			X mu = (R * A - B) / D;
 
-			return X;
+			// xi = lambda V_x + mu V_EX
+			auto xi = blas::vector<X>(rho.dimension(), _xi);
+			xi.copy(V_x);
+			blas::scal(mu, xi);
+			blas::axpy(lambda, V_EX, xi);
+			
+			return (C - 2*B*R + A*R*R)/D;
 		}
 	};
 
