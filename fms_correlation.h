@@ -10,14 +10,13 @@ Unit vectors \((e_i)\) determine a correlation matrix \([\rho_{ij}]\)
 where \(\rho_{ij} = e_i\cdot e_j\) is the inner product of the vectors.
 For every correlation matrix we can find unit vectors that satisfy this
 using the Cholesky decomposition of the correlation matrix. The rows
-of the lower decompsition are the \((e_i\).
+of the lower decomposition are the \((e_i\).
 )xyzyx";
 	template<class X = double>
 	class correlation : public blas::matrix<X> {
 		std::valarray<X> _e; // lower Cholesky factor
 	public:
 		using blas::matrix<X>::operator();
-		using blas::matrix<X>::resize;
 		using blas::matrix<X>::row;
 		using blas::matrix<X>::rows;
 		using blas::matrix<X>::transpose;
@@ -32,7 +31,7 @@ of the lower decompsition are the \((e_i\).
 		correlation(int n, const X* rho)
 			: blas::matrix<X>(n, n), _e(n * n)
 		{
-			resize(n, n, &_e[0]);
+			blas::matrix<X>::a = &_e[0];
 
 			operator()(0, 0) = X(1);
 			for (int i = 1; i < n; ++i) {
@@ -42,19 +41,19 @@ of the lower decompsition are the \((e_i\).
 				}
 			}
 
-			lapack::potrf<X>(*this); // lower
+			lapack::potrf<X>(CblasLower, *this);
 		}
 		correlation(const correlation& rho)
 			: blas::matrix<X>(rho.rows(), rho.columns()), _e(rho.size())
 		{ 
 			_e = rho._e;
-			resize(rho.rows(), rho.columns(), &_e[0]);
+			blas::matrix<X>::a = &_e[0];
 		}
 		correlation& operator=(const correlation& rho)
 		{
 			if (this != &rho) {
 				_e = rho._e;
-				resize(rho.rows(), rho.columns(), &_e[0]);
+				blas::matrix<X>::a = &_e[0];
 			}
 
 			return *this;
@@ -74,9 +73,9 @@ of the lower decompsition are the \((e_i\).
 		Return the underlying correlation matrix in preallocated array.
 )xyzyx";
 		// 
-		void get(X* cor) const
+		blas::matrix<X> get(X* cor) const
 		{
-			blas::gemm(*this, transpose(), cor);
+			return blas::gemm(*this, transpose(), cor);
 		}
 
 		static inline const char rho_doc[] = R"xyzyx(

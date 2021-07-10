@@ -114,7 +114,7 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
 		ensure(pa->columns == pa->rows); // fix up ld???
 
 		auto a = fpmatrix(pa);
-		lapack::potrf(a, lower ? CblasLower : CblasUpper);
+		lapack::potrf(lower ? CblasLower : CblasUpper, a);
 
 		if (nofill == FALSE) {
 			if (lower) {
@@ -166,7 +166,7 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 		ensure(pa->columns == pa->rows);
 
 		auto a = fpmatrix(pa);
-		lapack::potri(a, lower ? CblasLower : CblasUpper);
+		lapack::potri(lower ? CblasLower : CblasUpper, a);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
