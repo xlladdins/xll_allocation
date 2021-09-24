@@ -7,7 +7,11 @@
 
 namespace fms::allocation {
 
-	// xi = V^-1(lamba x + mu E[X])
+static inline const char fms_allocation_doc[] = R"xyzyx(
+Given a vector of realized returns \(R\) with covariance \(\Sigma = \operatorname{Cov}(R,R)\)
+and a target expected realized return \(\rho\), find a portfolio having miniumum variance.
+)xyzyx";
+
 	template<class X>
 	class portfolio {
 		std::valarray<X> ER; // expected realized return
@@ -29,6 +33,7 @@ namespace fms::allocation {
 		// minimize variance given target return
 		// optimal porfolio is put in xi
 		// minimum variance is returned
+		// xi = V^-1(lambda x + mu E[X])
 		X minimize(X R, X* _xi)
 		{
 			X lambda = (C - R * B) / D;
