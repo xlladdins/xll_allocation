@@ -14,15 +14,11 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 	template<class X = double>
 	class portfolio {
-		std::valarray<X> R; // expected realized return
-		std::valarray<X> Sigma; // volatilities
-		fms::correlation<X> rho; // lower Cholesky correlation unit vectors
-
 		blas::vector_array<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
 		X A, B, C, D;
 	public:
 		portfolio(int n, const X* R, const X* Sigma, const correlation<X>& rho)
-			: R(R, n), Sigma(Sigma, n), rho(rho), V_x(n), V_EX(n)
+			: V_x(n), V_EX(n)
 		{
 			// calculate V_x, V_EX
 			// V_x = V^-1 x, x = V V_x, V = sigma' rho' rho sigma 
@@ -45,13 +41,19 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 				V_EX[i] = V_EX[i] / Sigma[i];
 			}
 			double _1 = 1;
-			blas::vector one(1, &_1, 0);
+			blas::vector one(n, &_1, 0);
 			A = blas::dot(one, V_x); // x V_x, x = {1,1, ...}
 			B = blas::dot(one, V_EX);  // x V_EX
 			blas::vector EX(n, const_cast<double*>(R));
 			C = blas::dot(EX, V_EX); // E[X] V_EX
 			D = B * B - A * C;
 		}
+
+		int size() const
+		{
+			return V_x.size();
+		}
+
 		// minimize variance given target return
 		// optimal porfolio is put in xi
 		// minimum variance is returned
@@ -62,10 +64,12 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			X mu = (r * A - B) / D;
 
 			// xi = lambda V_x + mu V_EX
-			auto xi = blas::vector<X>(rho.dimension(), _xi);
-			xi.copy(V_x);
-			blas::scal(mu, xi);
-			blas::axpy(lambda, V_EX, xi);
+			if (_xi) {
+				auto xi = blas::vector<X>(V_x.size(), _xi);
+				xi.copy(V_x);
+				blas::scal(lambda, xi);
+				blas::axpy(mu, V_EX, xi);
+			}
 			
 			return (C - 2*B*r + A*r*r)/D;
 		}
