@@ -70,12 +70,12 @@ of the lower decomposition are the \((e_i\).
 		}
 
 		static inline const char get_doc[] = R"xyzyx(
-		Return the underlying correlation matrix in preallocated array.
+		Return the underlying correlation matrix in preallocated n x n array.
 )xyzyx";
 		// fill cor with correlations
 		blas::matrix<X> get(X* cor) const
 		{
-			return blas::gemm(*this, transpose(), cor);
+			return blas::gemm(transpose(), *this, cor);
 		}
 
 		static inline const char rho_doc[] = R"xyzyx(
@@ -91,6 +91,7 @@ of the lower decomposition are the \((e_i\).
 )xyzyx";
 		correlation& rho(int i, int j, X r_ij)
 		{
+			ensure(-1 <= r_ij && r_ij <= 1);
 			static X eps = sqrt(std::numeric_limits<X>::epsilon());
 
 			if (i == j) {

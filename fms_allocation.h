@@ -41,11 +41,11 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 				V_EX[i] = V_EX[i] / Sigma[i];
 			}
 			double _1 = 1;
-			blas::vector one(n, &_1, 0);
-			A = blas::dot(one, V_x); // x V_x, x = {1,1, ...}
-			B = blas::dot(one, V_EX);  // x V_EX
+			blas::vector x(n, &_1, 0); // x = {1,1, ...}
+			A = blas::dot(x, V_x); // x . V_x
+			B = blas::dot(x, V_EX);  // x . V_EX
 			blas::vector EX(n, const_cast<double*>(R));
-			C = blas::dot(EX, V_EX); // E[X] V_EX
+			C = blas::dot(EX, V_EX); // E[X] . V_EX
 			D = B * B - A * C;
 		}
 
@@ -63,8 +63,8 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			X lambda = (C - r * B) / D;
 			X mu = (r * A - B) / D;
 
-			// xi = lambda V_x + mu V_EX
 			if (_xi) {
+				// xi = lambda V_x + mu V_EX
 				auto xi = blas::vector<X>(V_x.size(), _xi);
 				xi.copy(V_x);
 				blas::scal(lambda, xi);

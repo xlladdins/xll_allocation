@@ -5,7 +5,9 @@ using namespace xll;
 
 #ifdef _DEBUG
 int xll_allocation_test = []() {
+	//_crtBreakAlloc = 210;
 	try {
+		//mkl_disable_fast_mm();
 		double r = 0.6;
 		fms::correlation c(2, &r); // [1   0] [1 .6] = [1 .6]
 								   // [.6 .8] [0 .8]   [.6 1]
@@ -21,8 +23,8 @@ int xll_allocation_test = []() {
 			ensure(1 == c.rho(1, 1));
 		}
 		{
-			double ER[] = { 1, 1 };
-			double Sigma[] = { .2, .3 };
+			double ER[] = { 2, 3};
+			double Sigma[] = { 4, 5 };
 
 			fms::allocation::portfolio ap(2, ER, Sigma, c);
 		}
