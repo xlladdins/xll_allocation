@@ -53,11 +53,6 @@ inline blas::matrix<double> fpmatrix(_FPX* pa)
 	return blas::matrix<double>(pa->rows, pa->columns, pa->array);
 }
 
-inline const blas::matrix<const double> fpmatrix(const _FPX* pa)
-{
-	return blas::matrix<const double>(pa->rows, pa->columns, pa->array);
-}
-
 AddIn xai_blas_gemm(
 	Function(XLL_FPX, "xll_blas_gemm", "BLAS.GEMM")
 	.Arguments({
@@ -67,7 +62,7 @@ AddIn xai_blas_gemm(
 	.Category("BLAS")
 	.FunctionHelp("Return the matrix product of a and b.")
 );
-_FPX* WINAPI xll_blas_gemm(const _FPX* pa, const _FPX* pb)
+_FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 {
 #pragma XLLEXPORT
 	static FPX c;
@@ -76,7 +71,7 @@ _FPX* WINAPI xll_blas_gemm(const _FPX* pa, const _FPX* pb)
 		ensure(pa->columns == pb->rows);
 
 		c.resize(pa->rows, pb->columns);
-		//blas::gemm(fpmatrix(pa), fpmatrix(pb), c.array());
+		blas::gemm(fpmatrix(pa), fpmatrix(pb), c.array());
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());

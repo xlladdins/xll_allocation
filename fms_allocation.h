@@ -12,32 +12,54 @@ Given a vector of realized returns \(R\) with covariance \(\Sigma = \operatornam
 and a target expected realized return \(\rho\), find a portfolio having miniumum variance.
 )xyzyx";
 
-	template<class X>
+	template<class X = double>
 	class portfolio {
-		std::valarray<X> ER; // expected realized return
+		std::valarray<X> R; // expected realized return
 		std::valarray<X> Sigma; // volatilities
 		fms::correlation<X> rho; // lower Cholesky correlation unit vectors
 
 		blas::vector_array<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
 		X A, B, C, D;
 	public:
-		portfolio(int n, const X* x, const X* ER, const X* Sigma, const correlation<X>& rho)
-			: ER(ER, n), Sigma(Sigma, n), rho(rho)
+		portfolio(int n, const X* R, const X* Sigma, const correlation<X>& rho)
+			: R(R, n), Sigma(Sigma, n), rho(rho), V_x(n), V_EX(n)
 		{
-			// calculate V_x, V_ER
-			A = 0; // x V_x, x = {1,1, ...}
-			B = 0;  // x V_EX
-			C = 0; // E[x] V_EX
+			// calculate V_x, V_EX
+			// V_x = V^-1 x, x = V V_x, V = sigma' rho' rho sigma 
+			// V_x = sigma^-1 rho^-1 rho'^-1 sigma'^-1 x
+			// x1 = sigma'^-1 x, x = (1,1,...)
+			for (int i = 0; i < n; ++i) {
+				ensure(Sigma[i] > 0);
+				V_x[i] = 1 / Sigma[i];
+				V_EX[i] = R[i] / Sigma[i];
+			}
+			// x2 = rho'^-1 x1
+			blas::trmv(CblasUpper, rho.transpose(), V_x.data());
+			blas::trmv(CblasUpper, rho.transpose(), V_EX.data());
+			// x3 = rho^-1 x2
+			blas::trmv(CblasLower, rho, V_x.data());
+			blas::trmv(CblasLower, rho, V_EX.data());
+			// x4 = sigma^-1 x3
+			for (int i = 0; i < n; ++i) {
+				V_x[i] = V_x[i] / Sigma[i];
+				V_EX[i] = V_EX[i] / Sigma[i];
+			}
+			double _1 = 1;
+			blas::vector one(1, &_1, 0);
+			A = blas::dot(one, V_x); // x V_x, x = {1,1, ...}
+			B = blas::dot(one, V_EX);  // x V_EX
+			blas::vector EX(n, const_cast<double*>(R));
+			C = blas::dot(EX, V_EX); // E[X] V_EX
 			D = B * B - A * C;
 		}
 		// minimize variance given target return
 		// optimal porfolio is put in xi
 		// minimum variance is returned
 		// xi = V^-1(lambda x + mu E[X])
-		X minimize(X R, X* _xi)
+		X minimize(X r, X* _xi)
 		{
-			X lambda = (C - R * B) / D;
-			X mu = (R * A - B) / D;
+			X lambda = (C - r * B) / D;
+			X mu = (r * A - B) / D;
 
 			// xi = lambda V_x + mu V_EX
 			auto xi = blas::vector<X>(rho.dimension(), _xi);
@@ -45,9 +67,14 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			blas::scal(mu, xi);
 			blas::axpy(lambda, V_EX, xi);
 			
-			return (C - 2*B*R + A*R*R)/D;
+			return (C - 2*B*r + A*r*r)/D;
 		}
 	};
+	// maximize return given target variance
+		// optimal porfolio is put in xi
+		// minimum variance is returned
+		// xi = V^-1(lambda x + mu E[X])
+	//X maximize(X R, X* _sigma);
 
 
 } // namespace fms::allocation
