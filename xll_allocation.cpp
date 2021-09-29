@@ -27,6 +27,24 @@ int xll_allocation_test = []() {
 			double Sigma[] = { 4, 5 };
 
 			fms::allocation::portfolio ap(2, ER, Sigma, c);
+			
+			double sigma2, xi[2];
+
+			auto eq = [](double x, double y, double tol) {
+				return fabs(x - y) <= tol;
+			};
+			constexpr double eps = std::numeric_limits<double>::epsilon();
+
+			sigma2 = ap.minimize(ER[0], xi);
+			ensure(Sigma[0] * Sigma[0] == sigma2);
+			ensure(eq(1, xi[0], eps));
+			ensure(eq(0, xi[1], eps));
+
+			sigma2 = ap.minimize(ER[1], xi);
+			ensure(eq(Sigma[1] * Sigma[1], sigma2, 100*eps));
+			ensure(eq(0, xi[0], 2*eps));
+			ensure(eq(1, xi[1], 2*eps));
+
 		}
 	}
 	catch (const std::exception& ex) {
