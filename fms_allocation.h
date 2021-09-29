@@ -21,32 +21,38 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			: V_x(n), V_EX(n)
 		{
 			// calculate V_x, V_EX
-			// V_x = V^-1 x, x = V V_x, V = sigma' rho' rho sigma 
-			// V_x = sigma^-1 rho^-1 rho'^-1 sigma'^-1 x
-			// x1 = sigma'^-1 x, x = (1,1,...)
+			// V_x = V^-1 x, V = sigma rho rho' sigma 
+			// V_x = sigma^-1 rho'^-1 rho^-1 sigma^-1 x
+			
+			// x1 = sigma^-1 x, x = (1,1,...)
 			for (int i = 0; i < n; ++i) {
 				ensure(Sigma[i] > 0);
 				V_x[i] = 1 / Sigma[i];
 				V_EX[i] = R[i] / Sigma[i];
 			}
-			// x2 = rho'^-1 x1
-			blas::trmv(CblasUpper, rho.transpose(), V_x.data());
-			blas::trmv(CblasUpper, rho.transpose(), V_EX.data());
-			// x3 = rho^-1 x2
-			blas::trmv(CblasLower, rho, V_x.data());
-			blas::trmv(CblasLower, rho, V_EX.data());
+
+			// x2 = rho^-1 x1
+			blas::trsv(CblasLower, rho, V_x.data());
+			blas::trsv(CblasLower, rho, V_EX.data());
+			
+			// x3 = rho'^-1 x2
+			blas::trsv(CblasLower, rho.transpose(), V_x.data());
+			blas::trsv(CblasLower, rho.transpose(), V_EX.data());
+			
 			// x4 = sigma^-1 x3
 			for (int i = 0; i < n; ++i) {
 				V_x[i] = V_x[i] / Sigma[i];
 				V_EX[i] = V_EX[i] / Sigma[i];
 			}
+			
 			double _1 = 1;
 			blas::vector x(n, &_1, 0); // x = {1,1, ...}
+			blas::vector EX(n, const_cast<double*>(R));
+
 			A = blas::dot(x, V_x); // x . V_x
 			B = blas::dot(x, V_EX);  // x . V_EX
-			blas::vector EX(n, const_cast<double*>(R));
 			C = blas::dot(EX, V_EX); // E[X] . V_EX
-			D = B * B - A * C;
+			D = A * C - B * B;
 		}
 
 		int size() const

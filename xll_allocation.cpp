@@ -126,6 +126,8 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 		handle<fms::allocation::portfolio<>> h_(h);
 		ensure(h_);
 		sigma = h_->minimize(r, nullptr);
+		ensure(sigma >= 0);
+		sigma = sqrt(sigma);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());

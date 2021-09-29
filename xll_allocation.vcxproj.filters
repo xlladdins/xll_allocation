@@ -30,6 +30,7 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="README.md" />
+    <None Include="NOTES.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="fms_allocation.h">
