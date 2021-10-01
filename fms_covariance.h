@@ -4,6 +4,34 @@
 
 namespace fms {
 
+	// mean of columns of X
+	// X is n x m, EX has size m
+	inline blas::vector<double> mean(size_t n, size_t m, const double* X, double* EX)
+	{
+		double _n = 1./n;
+		blas::vector n_(n, &_n, 0); // n_ = {1/n,1/n, ...}
+		blas::matrix<double> x(n, m, const_cast<double*>(X));
+		blas::gemv(x.transpose(), n_, EX);
+
+		return blas::vector(m, EX);
+	}
+
+	// Cov(X,X) = E[X'X] - E[X]E[X]'
+	// X is n x m, Cov(X, X) is m x m
+	inline blas::matrix covariance(size_t n, size_t m, const double* X, double* CovX, double* EX = nullptr)
+	{
+		blas::matrix<double> x(n, m, const_cast<double*>(X));
+		blas::gemm(x.transpose(), x, CovX);
+		if (EX) {
+			mean(n, m, X, EX);
+			blas::matrix x(m, 1, EX);
+			// CovX -= EX EX'
+			blas::syrk(CblasLower, x, CovX, -1);
+		}
+
+		return blas::matrix(m, m, CovX);
+	}
+
 	template<class X = double>
 	class covariance {
 		blas::matrix<X> C;

@@ -83,7 +83,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		// optimal porfolio is put in xi
 		// maximum return is returned
 		// xi = V^-1(lambda x + mu E[X])
-		// max xi.ER - lambda(xi.x - 1) - mu/2 (xi' V xi - s)
+		// max xi.ER - lambda(xi.x - 1) - mu/2 (xi' V xi - sigma^2)
 		// 0 = ER - lambda x - mu V xi
 		// xi = V^{-1}(ER - lambda x)
 		//X maximize(X s, X* _xi);

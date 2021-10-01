@@ -208,7 +208,6 @@
   <ItemGroup>
     <None Include="NOTES.md" />
     <None Include="README.md" />
-    <None Include="setup.bat" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="xll\xll.vcxproj">

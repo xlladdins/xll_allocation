@@ -26,9 +26,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="setup.bat">
-      <Filter>Source Files</Filter>
-    </None>
     <None Include="README.md" />
     <None Include="NOTES.md" />
   </ItemGroup>
