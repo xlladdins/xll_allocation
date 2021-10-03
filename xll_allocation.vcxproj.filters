@@ -42,5 +42,8 @@
     <ClInclude Include="fms_covariance.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fms_trnlsp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -18,7 +18,7 @@ namespace fms {
 
 	// Cov(X,X) = E[X'X] - E[X]E[X]'
 	// X is n x m, Cov(X, X) is m x m
-	inline blas::matrix covariance(size_t n, size_t m, const double* X, double* CovX, double* EX = nullptr)
+	inline blas::matrix<double> covariance(size_t n, size_t m, const double* X, double* CovX, double* EX = nullptr)
 	{
 		blas::matrix<double> x(n, m, const_cast<double*>(X));
 		blas::gemm(x.transpose(), x, CovX);
