@@ -24,6 +24,9 @@
     <ClCompile Include="xll_correlation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="xll_covariance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -42,7 +45,7 @@
     <ClInclude Include="fms_covariance.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="fms_trnlsp.h">
+    <ClInclude Include="MSK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

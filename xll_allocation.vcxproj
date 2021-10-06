@@ -102,10 +102,12 @@
     <linkage-MKL-static-win-x64>static</linkage-MKL-static-win-x64>
     <threading-MKL-static-win-x64>sequential</threading-MKL-static-win-x64>
     <interface-MKL-static-win-x64>lp64</interface-MKL-static-win-x64>
+    <IncludePath>$(MOSEK_9_3_INSTALLDIR)\tools\platform\win64x86\h;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetExt>.xll</TargetExt>
+    <IncludePath>$(MOSEK_9_3_INSTALLDIR)\tools\platform\win64x86\h;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <VcpkgUseStatic>true</VcpkgUseStatic>
@@ -176,7 +178,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalOptions>/wholearchive:xll %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(MOSEK_9_3_BINDIR)\mosek64_9_3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -198,11 +200,13 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>$(MOSEK_9_3_BINDIR)\mosek64_9_3.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="xll_allocation.cpp" />
     <ClCompile Include="xll_correlation.cpp" />
+    <ClCompile Include="xll_covariance.cpp" />
     <ClCompile Include="xll_lapack.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -218,7 +222,7 @@
     <ClInclude Include="fms_allocation.h" />
     <ClInclude Include="fms_correlation.h" />
     <ClInclude Include="fms_covariance.h" />
-    <ClInclude Include="fms_trnlsp.h" />
+    <ClInclude Include="MSK.h" />
     <ClInclude Include="xll_allocation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

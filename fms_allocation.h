@@ -14,7 +14,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 	template<class X = double>
 	class portfolio {
-		blas::vector_array<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
+		blas::vector_alloc<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
 		X A, B, C, D;
 	public:
 		portfolio(int n, const X* ER, const X* Sigma, const correlation<X>& rho)
