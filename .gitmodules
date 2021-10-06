@@ -1,0 +1,6 @@
+[submodule "xll"]
+	path = xll
+	url = https://github.com/xlladdins/xll
+[submodule "fms_blas"]
+	path = fms_blas
+	url = https://github.com/keithalewis/fms_blas
