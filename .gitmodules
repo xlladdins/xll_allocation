@@ -1,6 +1,0 @@
-[submodule "xll"]
-	path = xll
-	url = https://github.com/xlladdins/xll.git
-[submodule "fms_blas"]
-	path = fms_blas
-	url = https://github.com/keithalewis/fms_blas.git
