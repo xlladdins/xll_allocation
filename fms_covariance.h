@@ -8,28 +8,29 @@ namespace fms {
 	// X is n x m, EX has size m
 	inline blas::vector<double> mean(int n, int m, const double* X, double* EX)
 	{
-		double _n = 1./n;
-		blas::vector n_(n, &_n, 0); // n_ = {1/n,1/n, ...}
-		blas::matrix<double> x(n, m, const_cast<double*>(X), CblasTrans);
-		blas::gemv(x, n_, EX);
-
+		double _n = 1. / n;
+		blas::vector<const double> n_(n, &_n, 0); // n_ = {1/n,1/n, ...}
+		for (int j = 0; j < m; ++j) {
+			EX[j] = blas::dot(blas::vector(n, X + j, m), n_);
+		}
+		
 		return blas::vector(m, EX);
 	}
 
-	// Cov(X,X) = E[X'X] - E[X]E[X]'
+	// Cov(X,X) = E[X'X] - E[X]'E[X]
 	// X is n x m, Cov(X, X) is m x m
 	inline blas::matrix<double> covariance(int n, int m, const double* X, double* CovX, double* EX = nullptr)
 	{
 		blas::matrix<double> x(n, m, const_cast<double*>(X));
-		blas::gemm(x.transpose(), x, CovX);
+		std::fill(CovX, CovX + m * m, 0.);
+		blas::matrix<double> XX = blas::gemm(x.transpose(), x, CovX, 1./n);
 		if (EX) {
-			mean(n, m, X, EX);
-			blas::matrix ex(m, 1, EX);
+			blas::vector<double> ex = mean(n, m, X, EX);
 			// CovX -= EX EX'
-			blas::syrk<double>(CblasLower, ex, CovX, -1);
+			blas::syr<double>(CblasLower, -1, ex, XX);
 		}
 
-		return blas::matrix(m, m, CovX);
+		return XX;
 	}
 	/*
 	template<class X = double>

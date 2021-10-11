@@ -33,7 +33,7 @@ HANDLEX WINAPI xll_correlation_(LONG n, const _FPX* prho)
 
 	return h;
 }
-
+#if 0
 AddIn xai_correlation(
 	Function(XLL_FPX, "xll_correlation", "XLL.CORRELATION")
 	.Arguments({
@@ -98,3 +98,4 @@ HANDLEX WINAPI xll_correlation_rho(HANDLEX hrho, LONG i, LONG j, LPOPER prho)
 
 	return h;
 }
+#endif // 0
