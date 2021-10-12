@@ -24,7 +24,7 @@ int xll_allocation_test = []() {
 		}
 		{
 			double ER[] = { 2, 3};
-			double Sigma[] = { 4, 5 };
+			double Sigma[] = { .1, .2 };
 
 			fms::allocation::portfolio ap(2, ER, Sigma, c);
 			
@@ -36,15 +36,19 @@ int xll_allocation_test = []() {
 			constexpr double eps = std::numeric_limits<double>::epsilon();
 
 			sigma2 = ap.minimize(ER[0], xi);
-			ensure(Sigma[0] * Sigma[0] == sigma2);
+			ensure(Sigma[0] == sigma2);
 			ensure(eq(1, xi[0], eps));
 			ensure(eq(0, xi[1], eps));
 
 			sigma2 = ap.minimize(ER[1], xi);
-			ensure(eq(Sigma[1] * Sigma[1], sigma2, 100*eps));
-			ensure(eq(0, xi[0], 2*eps));
-			ensure(eq(1, xi[1], 2*eps));
+			ensure(eq(Sigma[1], sigma2, 100*eps));
+			ensure(eq(0, xi[0], 100*eps));
+			ensure(eq(1, xi[1], 100*eps));
 
+			double r_ = ap.maximize(sigma2, xi);
+			ensure(r_ == r);
+			//ensure(eq(0, xi[0], 2 * eps));
+			//ensure(eq(1, xi[1], 2 * eps));
 		}
 	}
 	catch (const std::exception& ex) {
@@ -61,15 +65,14 @@ AddIn xai_allocation(
 	Function(XLL_HANDLE, "xll_allocation", "\\" CATEGORY ".ALLOCATION")
 	.Arguments({
 		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
-		Arg(XLL_FP, "Sigma", "is vector of volatilities of returns."),
-		Arg(XLL_FP, "Rho", "is the lower Cholesky factor of return correlations."),
+		Arg(XLL_FP, "Cov", "is lower triangular covariance matrix."),
 		})
 	.Uncalced()
 	.Category(CATEGORY)
 	.FunctionHelp("Return handle to portfolio.")
 	.Documentation(R"xyzyx()xyzyx")
 );
-HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pSigma, const _FPX* pRho)
+HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
 {
 #pragma XLLEXPORT
 	HANDLEX h = INVALID_HANDLEX;
@@ -77,12 +80,10 @@ HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pSigma, const _FPX* pR
 	try {
 		int n = size(*pR);
 
-		ensure(n == (int)size(*pSigma));
-		ensure((n*(n-1))/2 == (int)size(*pRho));
+		ensure(n == pCov->rows);
+		ensure(n == pCov->columns);
 
-		fms::correlation rho(n, pRho->array);
-
-		handle<fms::allocation::portfolio<>> h_(new fms::allocation::portfolio<>(n, pR->array, pSigma->array, rho));
+		handle<fms::allocation::portfolio<>> h_(new fms::allocation::portfolio<>(n, pR->array, (double*)pCov->array));
 		h = h_.get();
 	}
 	catch (const std::exception& ex) {

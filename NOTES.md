@@ -1,16 +1,15 @@
-https://community.intel.com/t5/Intel-oneAPI-Math-Kernel-Library/Insight-as-to-why-Valgrind-shows-memory-leak-for-LAPACKE/td-p/1123029
+# Notes
 
-Sigma	G												
-4	1	0.6		1	0		1	0.6						
-5	0.6	1		0.6	0.8		0.6	1						
-													
-			1	0			1	0						
-			-0.75	1.25	0	1						
-													
-x		x1		x2		x3			x4				A			B			C			D
-1		0.25	0.25	0.203125	0.05078125		0.06640625	0.1484375	0.390625	0.00390625
-1		0.2		0.0625	0.078125	0.015625					0.1484375		
-													
-ER													
-2		0.5		0.5		0.21875		0.0546875					
-3		0.6		0.375	0.46875		0.09375					
+$\max \xi'E[X] - \lambda(\xi'x - 1) - \mu/2(\xi'V\xi - \sigma^2)$
+
+$0 = E[X] - \lambda x - \mu V\xi$
+
+$\xi = (1/\mu)(V^{-1}E[X] - \lambda V^{-1}x)$
+
+$1 = \xi'x = (1/\mu)(E[X]'V^{-1}x - \lambda x'V^{-1}x) = (1/\mu)(B - \lamba A)$
+
+$\sigma^2 = \xi'V\xi = \xi'/\mu (E[X] - \lambda x) = (1/\mu^2)(C - 2\lambda B + \lambda^2 A)$
+
+$0 = (C - 2\lambda B + \lambda^2 A) - \sigma^2(B^2 - 2\lambda AB + \lambda^2 A^2)$
+
+$0 = (C - \sigma^2 B^2) - 2(B - \sigma^2 AB)\lambda + (A - \sigma^2 A^2)\lambda^2$

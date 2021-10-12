@@ -22,12 +22,10 @@ namespace fms {
 	inline blas::matrix<double> covariance(int n, int m, const double* X, double* CovX, double* EX = nullptr)
 	{
 		blas::matrix<double> x(n, m, const_cast<double*>(X));
-		std::fill(CovX, CovX + m * m, 0.);
 		blas::matrix<double> XX = blas::gemm(x.transpose(), x, CovX, 1./n);
 		if (EX) {
-			blas::vector<double> ex = mean(n, m, X, EX);
 			// CovX -= EX EX'
-			blas::syr<double>(CblasLower, -1, ex, XX);
+			blas::syr<double>(CblasLower, -1, mean(n, m, X, EX), XX);
 		}
 
 		return XX;
