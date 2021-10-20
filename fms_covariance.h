@@ -25,7 +25,13 @@ namespace fms {
 		blas::matrix<double> XX = blas::gemm(x.transpose(), x, CovX, 1./n);
 		if (EX) {
 			// CovX -= EX EX'
-			blas::syr<double>(CblasLower, -1, mean(n, m, X, EX), XX);
+			//blas::syr<double>(CblasLower, -1, mean(n, m, X, EX), XX);
+			mean(n, m, X, EX);
+			for (int i = 0; i < m; ++i) {
+				for (int j = 0; j < m; ++j) {
+					XX(i, j) -= EX[i] * EX[j];
+				}
+			}
 		}
 
 		return XX;

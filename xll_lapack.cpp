@@ -1,4 +1,5 @@
 // xll_lapack.cpp - Intel MKL routines
+#include "fms_blas/fms_blas.h"
 #include "fms_blas/fms_lapack.h"
 #include "xll/xll/xll.h"
 
@@ -170,4 +171,36 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 	}
 
 	return pa;
+}
+
+AddIn xai_lapack_quad(
+	Function(XLL_DOUBLE, "xll_lapack_quad", "LAPACK.QUAD")
+	.Arguments({
+		Arg(XLL_FPX, "A", "is a symmetric matrix."),
+		Arg(XLL_FPX, "x", "is a vector."),
+		Arg(XLL_BOOL, "_upper", "is an optional argument indicating upper triangular portion of A should be used."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the x'Ax.")
+	//.HelpTopic(quad_TOPIC)
+	.Documentation(R"(
+
+)")
+);
+double WINAPI xll_lapack_quad(_FPX* pa, _FPX* px, BOOL upper)
+{
+#pragma XLLEXPORT
+	double result = XLL_NAN;
+	try {
+		int n = size(*px);
+		ensure(n == pa->columns);
+		ensure(n == pa->rows);
+
+		result = blas::quad(upper ? CblasUpper : CblasLower, blas::matrix(n,n,pa->array), blas::vector(n, px->array));
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return result;
 }

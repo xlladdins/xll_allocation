@@ -3,6 +3,7 @@
 #pragma once
 #include <valarray>
 #include "fms_blas/fms_lapack.h"
+#include "fms_blas/fms_trnlsp.h"
 #include "fms_correlation.h"
 
 namespace fms::allocation {
@@ -14,16 +15,15 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 	template<class X = double>
 	class portfolio {
+		const X* ER;
+		/*const*/ X* V;
 		blas::vector_alloc<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
 		X A, B, C, D;
 		void ABCD(const blas::vector<X>& EX)
 		{
-			double _1 = 1;
-			blas::vector x(EX.size(), &_1, 0); // x = {1,1, ...}
-
-			A = blas::dot(x, V_x);   // x . V_x
-			B = blas::dot(x, V_EX);  // x . V_EX
-			C = blas::dot(EX, V_EX); // E[X] . V_EX
+			A = sum(V_x);   // x . V_x
+			B = sum(V_EX);  // x . V_EX
+			C = blas::dot(EX, V_EX); // E[X]' V^{-1} EX
 			D = A * C - B * B;
 		}
 	public:
@@ -59,10 +59,12 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		}
 		// V is lower triangular covariance matrix
 		portfolio(int n, const X* ER, /*const*/ X* V)
-			: V_x(n), V_EX(n)
+			: ER(ER), V(V), V_x(n), V_EX(n)
 		{
 			// calculate V_x, V_EX
+			V_x.fill(1);
 			blas::trsv(CblasLower, blas::matrix(n, n, V), V_x.data());
+			V_EX.copy(n, ER);
 			blas::trsv(CblasLower, blas::matrix(n, n, V), V_EX.data());
 
 			ABCD(blas::vector(n, const_cast<X*>(ER)));
@@ -73,14 +75,44 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			return V_x.size();
 		}
 
+		// realized return
+		X realized(int n, const X* w) const
+		{
+			ensure(n == size());
+
+			return blas::dot(blas::vector(n, ER), blas::vector(n, w));
+		}
+		// sqrt Var(w . R)
+		X volatility(int n, /*const*/ X* w) const
+		{
+			ensure(n == size());
+
+			return sqrt(blas::quad<X>(CblasLower, blas::matrix(n, n, V), blas::vector(n, w)));
+		}
+
+		X lambda(double r) const
+		{
+			return (C - r * B) / D;
+		}
+		X mu(double r) const
+		{
+			return (r * A - B) / D;
+		}
+
 		// minimize variance given target return
 		// optimal porfolio is put in xi
 		// minimum variance is returned
 		// xi = V^-1(lambda x + mu E[X])
-		X minimize(X r, X* _xi)
+		X minimize(X r, X* _xi, double* _lambda = nullptr, double* _mu = nullptr)
 		{
 			X lambda = (C - r * B) / D;
 			X mu = (r * A - B) / D;
+			if (_lambda) {
+				*_lambda = lambda;
+			}
+			if (_mu) {
+				*_mu = mu;
+			}
 
 			if (_xi) {
 				// xi = lambda V_x + mu V_EX
@@ -105,7 +137,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		// 0 = (C - sigma^2 B^2) - 2(B - sigma^2 AB) lambda + (A - sigma^2 A^2) lambda^2
 		// mu = B - lambda A
 		// xi.EX = (C - lambda B)/mu 
-		X maximize(X sigma, X* _xi)
+		X maximize(X sigma, X* _xi, double* _lambda = nullptr, double* _mu = nullptr)
 		{
 			double c = C - sigma * sigma * B * B;
 			double b = B - sigma * sigma * A * B;
@@ -114,6 +146,12 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 			double lambda = (-b + d) / a; // +- d ???
 			double mu = B - lambda * A;
+			if (_lambda) {
+				*_lambda = lambda;
+			}
+			if (_mu) {
+				*_mu = mu;
+			}
 
 			if (_xi) {
 				// xi = (V_EX - lambda V_X)/mu
@@ -125,7 +163,75 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 			return (C - lambda * B) / mu;
 		}
+
 	};
 
+	// x = (xi[n], lambda, mu)
+	template<class X>
+	X maximize(X sigma, int n, const double* ER, /*const*/ double* V, double* x)
+	{
+		portfolio<X> p(n, ER, V);
+		
+		return p.maximize(sigma, x, x + n, x + n + 1);
+	}
+	// F(xi[n], lambda, mu) = -(xi.EX - lambda(xi.x - 1) - mu/2 (xi' V xi - sigma^2))
+	// subject to l <= xi <= u
+	// D_xi F(xi[n], lambda, mu) = -EX + lambda x + mu V xi
+	// D_lambda = xi.x - 1, x = (1, 1, ...)
+	// D_mu = V xi - sigma*sigma
+	// x = (xi[n], lambda, mu)
+	// On entry x contains initial guess
+	template<class X>
+	X maximize(X sigma, int n, const double* ER, const double* V, double* x, const double* l, const double* u)
+	{
+		// move inside bounds
+		for (int i = 0; i < n + 2; ++i) {
+			x[i] = std::max(x[i], l[i]);
+			x[i] = std::min(x[i], u[i]);
+		}
+
+		fms::trnslpbc p(n, 1, x, l, u);
+		p.f = [&n,sigma,ER,V](int n, int, int, const double* x, double* fx) {
+			blas::matrix v(n, n, V);
+			blas::vector xi(n, x);
+			double lambda = x[n];
+			double mu = x[n + 1];
+			*fx = -blas::dot(xi, blas::vector(n, ER));
+			*fx += lambda * (blas::sum(xi) - 1);
+			*fx += (mu / 2) * (blas::quad(CblasLower, v, xi) - sigma & sigma);
+		};
+		p.df = [&n, sigma, ER, V](int n, int, int, const double* x, double* df) {
+			blas::matrix v(n, n, V);
+			blas::vector xi(n, x);
+			blas::vector dF(n, df);
+			double lambda = x[n];
+			double mu = x[n + 1];
+			df[n] = blas::sum(xi) - 1;
+			df[n + 1] = (blas::quad(CblasLower, v, xi) - sigma * sigma) / 2;
+			// mu V xi
+			blas::gemv(v, xi, dF.data(), dF.incr(), mu);
+			// + lambda x
+			blas::axpy(1, blas::vector(n, &lambda, 0), dF);
+			// -EX
+			blas::axpy(-1, blas::vector(n, ER), dF);
+		};
+		ensure(TR_SUCCESS == p.init());
+
+		blas::vector<X> x_(n + 2, x);
+		blas::vector_alloc<X> df(n + 2);
+		ensure(TR_SUCCESS = p.check(x_.data(), df.data()));
+		
+		int rci = 0;
+		ensure(TR_SUCCESS == p.solver(x_.data(), df.data(), rci));
+
+		int iter = 0, st_cr = 0;
+		double r1 = 0, r2 = 0;
+		ensure(TR_SUCCESS == p.get(iter, st_cr, r1, r2));
+
+		double result;
+		p.f(n, 1, x, &result); // already computed???
+
+		return result;
+	}
 
 } // namespace fms::allocation
