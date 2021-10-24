@@ -3,6 +3,8 @@
 
 using namespace xll;
 
+XLL_CONST(DOUBLE, DBL_MAX, DBL_MAX, "Maximum dobule value.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
+
 #ifdef _DEBUG
 int xll_allocation_test = []() {
 	//_crtBreakAlloc = 210;
@@ -28,24 +30,24 @@ int xll_allocation_test = []() {
 
 			fms::allocation::portfolio ap(2, ER, Sigma, c);
 			
-			double sigma2, xi[2];
+			double sigma, xi[2];
 
 			auto eq = [](double x, double y, double tol) {
 				return fabs(x - y) <= tol;
 			};
 			constexpr double eps = std::numeric_limits<double>::epsilon();
 
-			sigma2 = ap.minimize(ER[0], xi);
-			ensure(Sigma[0] == sigma2);
+			sigma = ap.minimize(ER[0], xi);
+			ensure(Sigma[0] == sigma*sigma);
 			ensure(eq(1, xi[0], eps));
 			ensure(eq(0, xi[1], eps));
 
-			sigma2 = ap.minimize(ER[1], xi);
-			ensure(eq(Sigma[1], sigma2, 100*eps));
+			sigma = ap.minimize(ER[1], xi);
+			ensure(eq(Sigma[1], sigma*sigma, 100*eps));
 			ensure(eq(0, xi[0], 100*eps));
 			ensure(eq(1, xi[1], 100*eps));
 
-			double r_ = ap.maximize(sigma2, xi);
+			double r_ = ap.maximize(sigma, xi);
 			ensure(r_ == r);
 			//ensure(eq(0, xi[0], 2 * eps));
 			//ensure(eq(1, xi[1], 2 * eps));
@@ -61,45 +63,12 @@ int xll_allocation_test = []() {
 }();
 #endif // _DEBUG
 
-AddIn xai_allocation_info(
-	Function(XLL_FP, "xll_allocation_info", CATEGORY ".ALLOCATION.INFO")
-	.Arguments({
-		Arg(XLL_FP, "ER", "is an array of expected returns."),
-		Arg(XLL_FP, "Cov", "is a lower triangular covariance matrix."),
-		Arg(XLL_FP, "w", "is an array of portfolio weights."),
-		})
-	.Category(CATEGORY)
-	.FunctionHelp("Return information about allocation.")
-);
-_FPX* WINAPI xll_allocation_info(_FPX* pER, _FPX* pV, _FPX* pw)
-{
-#pragma XLLEXPORT
-	static FPX ai(1, 2);
-
-	try {
-		auto n = size(*pER);
-		ensure(n == (unsigned)pV->rows);
-		ensure(n == (unsigned)pV->columns);
-		ensure(n == size(*pw));
-
-		fms::allocation::portfolio<> p(n, pER->array, pV->array);
-		ai[0] = p.realized(n, pw->array);
-		ai[1] = p.volatility(n, pw->array);
-	}
-	catch (const std::exception& ex) {
-		XLL_ERROR(ex.what());
-
-		return 0;
-	}
-
-	return ai.get();
-}
-
 AddIn xai_allocation(
 	Function(XLL_HANDLE, "xll_allocation", "\\" CATEGORY ".ALLOCATION")
 	.Arguments({
 		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
 		Arg(XLL_FP, "Cov", "is lower triangular covariance matrix."),
+		// Arg(XLL_BOOL, "_uplo", "is and optional boolean indicating the covariance matrix is upper."),
 		})
 	.Uncalced()
 	.Category(CATEGORY)
@@ -117,7 +86,7 @@ HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
 		ensure(n == pCov->rows);
 		ensure(n == pCov->columns);
 
-		handle<fms::allocation::portfolio<>> h_(new fms::allocation::portfolio<>(n, pR->array, (double*)pCov->array));
+		handle<fms::allocation::portfolio<>> h_(new fms::allocation::portfolio<>(n, pR->array, pCov->array));
 		h = h_.get();
 	}
 	catch (const std::exception& ex) {
@@ -126,37 +95,43 @@ HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
 
 	return h;
 }
-
 AddIn xai_allocation_minimize(
 	Function(XLL_FPX, "xll_allocation_minimize", CATEGORY ".ALLOCATION.MINIMIZE")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
-		Arg(XLL_DOUBLE, "R", "is the target expected realized return."),
+		Arg(XLL_DOUBLE, "r", "is the target realized return."),
+		Arg(XLL_FP, "_bounds", "is an optional array of bounds."),
 		})
-		.Uncalced()
-	.Category(CATEGORY)
-	.FunctionHelp("Return a portfolio with given return and minimum volatility.")
-	.Documentation(R"xyzyx()xyzyx")
+		.Category(CATEGORY)
+	.FunctionHelp("Return the minimum volatility with given return.")
+	.Documentation(R"xyzyx(
+The last argument can be a two row array of lower and upper bounds.
+)xyzyx")
 );
-
-_FPX* WINAPI xll_allocation_minimize(HANDLEX h, double r)
+_FPX* WINAPI xll_allocation_minimize(HANDLEX h, double r, const _FPX* plu)
 {
 #pragma XLLEXPORT
-	static FPX xi;
+	static FPX x;
 
 	try {
-		xi[0] = XLL_NAN;
 		handle<fms::allocation::portfolio<>> h_(h);
 		ensure(h_);
 		int n = h_->size();
-		xi.resize(n, 1);
-		h_->minimize(r, xi.array());
+		x.resize(1, n + 2);
+		h_->minimize(r, x.array(), &x[n], &x[n + 1]);
+		if (size(*plu) > 1) {
+			ensure(2 == plu->rows);
+			ensure(n + 2 == plu->columns);
+		}
+		else if (plu->array[0]) {
+
+		}
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
 	}
 
-	return xi.get();
+	return x.get();
 }
 
 AddIn xai_allocation_minimum(
@@ -178,8 +153,6 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 		handle<fms::allocation::portfolio<>> h_(h);
 		ensure(h_);
 		sigma = h_->minimize(r, nullptr);
-		ensure(sigma >= 0);
-		sigma = sqrt(sigma);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -191,28 +164,27 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 AddIn xai_allocation_maximize(
 	Function(XLL_FPX, "xll_allocation_maximize", CATEGORY ".ALLOCATION.MAXIMIZE")
 	.Arguments({
-		Arg(XLL_FP, "ER", "is a vector of expected returns."),
-		Arg(XLL_FP, "V", "is the lower triangular covariance matrix."),
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
 		Arg(XLL_DOUBLE, "sigma", "is the target volatility."),
 		Arg(XLL_FP, "_bounds", "is an optional array of bounds."),
 		})
 		.Category(CATEGORY)
-	.FunctionHelp("Return the maximum return with given volatility.")
+	.FunctionHelp("Return the optimal portfolio with given volatility.")
 	.Documentation(R"xyzyx(
 The last argument can be a two row array of lower and upper bounds.
 )xyzyx")
 );
-_FPX* WINAPI xll_allocation_maximize(const _FPX* pR, /*const*/ _FPX* pV, double sigma, const _FPX* plu)
+_FPX* WINAPI xll_allocation_maximize(HANDLEX h, double sigma, const _FPX* plu)
 {
 #pragma XLLEXPORT
 	static FPX x;
 
 	try {
-		int n = size(*pR);
-		ensure(n == pV->rows);
-		ensure(n == pV->columns);
+		handle<fms::allocation::portfolio<>> h_(h);
+		ensure(h_);
+		int n = h_->size();
 		x.resize(1, n + 2);
-		fms::allocation::maximize(sigma, n, pR->array, pV->array, x.array());
+		h_->maximize(sigma, x.array(), &x[n], &x[n + 1]);
 		if (size(*plu) > 1) {
 			// if
 		}
@@ -225,4 +197,31 @@ _FPX* WINAPI xll_allocation_maximize(const _FPX* pR, /*const*/ _FPX* pV, double 
 	}
 
 	return x.get();
+}
+
+AddIn xai_allocation_maximum(
+	Function(XLL_DOUBLE, "xll_allocation_maximum", CATEGORY ".ALLOCATION.MAXIMUM")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "sigma", "is the target volatility."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the maximum realized return.")
+	.Documentation(R"xyzyx()xyzyx")
+);
+double WINAPI xll_allocation_maximum(HANDLEX h, double r)
+{
+#pragma XLLEXPORT
+	double sigma = XLL_NAN;
+
+	try {
+		handle<fms::allocation::portfolio<>> h_(h);
+		ensure(h_);
+		sigma = h_->maximize(r, nullptr);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return sigma;
 }

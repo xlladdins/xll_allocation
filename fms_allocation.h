@@ -15,11 +15,10 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 	template<class X = double>
 	class portfolio {
-		const X* ER;
-		/*const*/ X* V;
 		blas::vector_alloc<X> V_x, V_EX; // V^-1 x, V^-1 E[R]
 		X A, B, C, D;
-		void ABCD(const blas::vector<X>& EX)
+		template<class T>
+		void ABCD(const blas::vector<T>& EX)
 		{
 			A = sum(V_x);   // x . V_x
 			B = sum(V_EX);  // x . V_EX
@@ -42,52 +41,35 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			}
 
 			// x2 = rho^-1 x1
-			blas::trsv(CblasLower, rho, V_x.data());
-			blas::trsv(CblasLower, rho, V_EX.data());
+			blas::trsv(CblasLower, rho, V_x);
+			blas::trsv(CblasLower, rho, V_EX);
 			
 			// x3 = rho'^-1 x2
-			blas::trsv(CblasLower, rho.transpose(), V_x.data());
-			blas::trsv(CblasLower, rho.transpose(), V_EX.data());
+			blas::trsv(CblasLower, rho.transpose(), V_x);
+			blas::trsv(CblasLower, rho.transpose(), V_EX);
 			
 			// x4 = sigma^-1 x3
 			for (int i = 0; i < n; ++i) {
 				V_x[i] = V_x[i] / Sigma[i];
 				V_EX[i] = V_EX[i] / Sigma[i];
 			}
-
-			ABCD(blas::vector(n, const_cast<X*>(ER)));
 		}
 		// V is lower triangular covariance matrix
-		portfolio(int n, const X* ER, /*const*/ X* V)
-			: ER(ER), V(V), V_x(n), V_EX(n)
+		portfolio(int n, const X* ER, const X* Cov, CBLAS_UPLO uplo = CblasLower)
+			: V_x(n), V_EX(n)
 		{
 			// calculate V_x, V_EX
 			V_x.fill(1);
-			blas::trsv(CblasLower, blas::matrix(n, n, V), V_x.data());
+			blas::trsv(uplo, blas::matrix(n, n, Cov), V_x);
 			V_EX.copy(n, ER);
-			blas::trsv(CblasLower, blas::matrix(n, n, V), V_EX.data());
+			blas::trsv(uplo, blas::matrix(n, n, Cov), V_EX);
 
-			ABCD(blas::vector(n, const_cast<X*>(ER)));
+			ABCD(blas::vector(n, ER));
 		}
 
 		int size() const
 		{
 			return V_x.size();
-		}
-
-		// realized return
-		X realized(int n, const X* w) const
-		{
-			ensure(n == size());
-
-			return blas::dot(blas::vector(n, ER), blas::vector(n, w));
-		}
-		// sqrt Var(w . R)
-		X volatility(int n, /*const*/ X* w) const
-		{
-			ensure(n == size());
-
-			return sqrt(blas::quad<X>(CblasLower, blas::matrix(n, n, V), blas::vector(n, w)));
 		}
 
 		X lambda(double r) const
@@ -99,14 +81,20 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			return (r * A - B) / D;
 		}
 
-		// minimize variance given target return
+		// minimize variance given target realized return
 		// optimal porfolio is put in xi
 		// minimum variance is returned
+		// min (1/2) xi' V xi - lambda(xi . x - 1) - mu(xi . EX - r)
+		// 0 = V xi - lambda x - mu EX
 		// xi = V^-1(lambda x + mu E[X])
-		X minimize(X r, X* _xi, double* _lambda = nullptr, double* _mu = nullptr)
+		// 1 = x' xi = x' V^-1 x lambda + x' V^-1 EX mu = [ A B ] [ lambda ]
+		// r = EX' xi = EX V^-1 x lamdda + EX V^-1 EX mu  [ B C ] [ mu     ]
+		// [lambda] = 1/D [ C  -B ] [ 1 ]
+		// [mu    ]       [ -B  A ] [ r ]
+		X minimize(X r, X* _xi, X* _lambda = nullptr, X* _mu = nullptr)
 		{
 			X lambda = (C - r * B) / D;
-			X mu = (r * A - B) / D;
+			X mu = (-B + r * A) / D;
 			if (_lambda) {
 				*_lambda = lambda;
 			}
@@ -127,16 +115,16 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		// maximize return given target variance
 		// optimal porfolio is put in xi
 		// maximum return is returned
-		// xi = V^-1(lambda x + mu E[X])
 		// max xi.EX - lambda(xi.x - 1) - mu/2 (xi' V xi - sigma^2)
 		// 0 = EX - lambda x - mu V xi
 		// xi = V^{-1}(EX - lambda x)/mu
-		// 1 = xi.x = (B - lambda A)/mu
-		// sigma^2 = xi.V xi = (C - 2B^2 lambda + A lambda^2)/mu^2
+		// 1 = xi' x = (B - lambda A)/mu so mu = B - lambda A
+		// sigma^2 = xi' V xi 
+		//         = (C - 2B^2 lambda + A lambda^2)/mu^2
+		//         = (C - 2B^2 lambda + A lambda^2)/(B - lambda A)^2 
 		// 0 = (C - 2B lambda + A lambda^2) - sigma^2(B^2 - 2 AB lambda + A^2 lambda^2)
 		// 0 = (C - sigma^2 B^2) - 2(B - sigma^2 AB) lambda + (A - sigma^2 A^2) lambda^2
-		// mu = B - lambda A
-		// xi.EX = (C - lambda B)/mu 
+		// return xi' EX = (C - lambda B)/mu
 		X maximize(X sigma, X* _xi, double* _lambda = nullptr, double* _mu = nullptr)
 		{
 			double c = C - sigma * sigma * B * B;
@@ -144,7 +132,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 			double a = A - sigma * sigma * A * A;
 			double d = sqrt(b * b - a * c);
 
-			double lambda = (-b + d) / a; // +- d ???
+			double lambda = (b + d) / a; // +- d ???
 			double mu = B - lambda * A;
 			if (_lambda) {
 				*_lambda = lambda;
@@ -168,7 +156,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 	// x = (xi[n], lambda, mu)
 	template<class X>
-	X maximize(X sigma, int n, const double* ER, /*const*/ double* V, double* x)
+	X maximize(X sigma, int n, const double* ER, const double* V, double* x)
 	{
 		portfolio<X> p(n, ER, V);
 		
