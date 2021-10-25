@@ -3,7 +3,10 @@
 
 using namespace xll;
 
-XLL_CONST(DOUBLE, DBL_MAX, DBL_MAX, "Maximum dobule value.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
+XLL_CONST(DOUBLE, DBL_MAX, DBL_MAX, "Maximum double value.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
+XLL_CONST(DOUBLE, DBL_EPSILON, DBL_EPSILON, "Smalles double value for which 1 + epsilon != 1.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
+
+Auto<Close> xac_free_buffers([]() { mkl_free_buffers(); return TRUE; });
 
 #ifdef _DEBUG
 int xll_allocation_test = []() {
@@ -95,6 +98,57 @@ HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
 
 	return h;
 }
+
+#ifdef _DEBUG
+
+AddIn xai_allocation_V_x(
+	Function(XLL_FPX, "xll_allocation_Cov_x", CATEGORY ".ALLOCATION.Cov_x")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Cov inverse x.")
+);
+_FPX* WINAPI xll_allocation_Cov_x(HANDLEX h)
+{
+#pragma XLLEXPORT
+	static FPX x;
+	
+	handle<fms::allocation::portfolio<>> h_(h);
+	if (h_) {		
+		int n = h_->size();
+		x.resize(1, n);
+		blas::vector(n, x.array()).copy(h_->Cov_x());
+	}
+
+	return x.get();
+}
+
+AddIn xai_allocation_V_EX(
+	Function(XLL_FPX, "xll_allocation_Cov_EX", CATEGORY ".ALLOCATION.Cov_EX")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle."),
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Cov inverse E[X].")
+);
+_FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
+{
+#pragma XLLEXPORT
+	static FPX x;
+
+	handle<fms::allocation::portfolio<>> h_(h);
+	if (h_) {
+		int n = h_->size();
+		x.resize(1, n);
+		blas::vector(n, x.array()).copy(h_->Cov_EX());
+	}
+
+	return x.get();
+}
+
+#endif // _DEUBG
+
 AddIn xai_allocation_minimize(
 	Function(XLL_FPX, "xll_allocation_minimize", CATEGORY ".ALLOCATION.MINIMIZE")
 	.Arguments({

@@ -53,16 +53,25 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 				V_x[i] = V_x[i] / Sigma[i];
 				V_EX[i] = V_EX[i] / Sigma[i];
 			}
+
+			ABCD(blas::vector(n, ER));
 		}
 		// V is lower triangular covariance matrix
 		portfolio(int n, const X* ER, const X* Cov, CBLAS_UPLO uplo = CblasLower)
 			: V_x(n), V_EX(n)
 		{
 			// calculate V_x, V_EX
+			blas::matrix_alloc<X> L(n, n); // lower Cholesky factor
+			L.copy(n * n, Cov);
+			lapack::potrf(uplo, L);
+			
 			V_x.fill(1);
-			blas::trsv(uplo, blas::matrix(n, n, Cov), V_x);
+			blas::trsv(uplo, L, V_x);
+			blas::trsv(uplo, L.transpose(), V_x);
+
 			V_EX.copy(n, ER);
-			blas::trsv(uplo, blas::matrix(n, n, Cov), V_EX);
+			blas::trsv(uplo, L, V_EX);
+			blas::trsv(uplo, L.transpose(), V_EX);
 
 			ABCD(blas::vector(n, ER));
 		}
@@ -70,6 +79,17 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		int size() const
 		{
 			return V_x.size();
+		}
+
+		// Cov^-1 x
+		const blas::vector<X>& Cov_x() const
+		{
+			return V_x;
+		}
+		// Cov^-1 E[X}
+		const blas::vector<X>& Cov_EX() const
+		{
+			return V_EX;
 		}
 
 		X lambda(double r) const
