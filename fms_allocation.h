@@ -56,7 +56,7 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 
 			ABCD(blas::vector(n, ER));
 		}
-		// V is lower triangular covariance matrix
+		// V is symmetric covariance matrix
 		portfolio(int n, const X* ER, const X* Cov, CBLAS_UPLO uplo = CblasLower)
 			: V_x(n), V_EX(n)
 		{
@@ -182,62 +182,100 @@ and a target expected realized return \(\rho\), find a portfolio having miniumum
 		
 		return p.maximize(sigma, x, x + n, x + n + 1);
 	}
-	// F(xi[n], lambda, mu) = -(xi.EX - lambda(xi.x - 1) - mu/2 (xi' V xi - sigma^2))
-	// subject to l <= xi <= u
+	// F(x) = F(xi[n], lambda, mu) = -(xi.EX - lambda(xi.x - 1) - mu/2 (xi' V xi - sigma^2))
+	// subject to l <= x <= u
 	// D_xi F(xi[n], lambda, mu) = -EX + lambda x + mu V xi
 	// D_lambda = xi.x - 1, x = (1, 1, ...)
 	// D_mu = V xi - sigma*sigma
-	// x = (xi[n], lambda, mu)
 	// On entry x contains initial guess
 	template<class X>
 	X maximize(X sigma, int n, const double* ER, const double* V, double* x, const double* l, const double* u)
 	{
-		// move inside bounds
-		for (int i = 0; i < n + 2; ++i) {
-			x[i] = std::max(x[i], l[i]);
-			x[i] = std::min(x[i], u[i]);
+		
+		{
+			int ret;
+			
+			double x_[2];// = { -1, 1 };
+			//double l_[2];// = { 0, 0 };
+			//double u_[2];// = { 10, 10 };
+			double* _x = x_;
+			
+			trnslpbc q(2, 2, _x, l, u);
+			ret = q.init();
+			ensure(TR_SUCCESS == ret);			
 		}
+		
+		trnslpbc p(n + 2, 2, x, l, u);
+		ensure(TR_SUCCESS == p.init());
+		x = x; u = u; l = l;
 
-		fms::trnslpbc p(n, 1, x, l, u);
-		p.f = [&n,sigma,ER,V](int n, int, int, const double* x, double* fx) {
-			blas::matrix v(n, n, V);
+		struct data {
+			double sigma;
+			const double* ER;
+			const double* V;
+		};
+
+		// move inside bounds
+		/*
+		for (int i = 0; i < n + 2; ++i) {
+			if (x[i] <= l[i]) {
+				x[i] = l[i] + 0.1;// p.rs;
+			}
+			if (x[i] >= u[i]) {
+				x[i] = u[i] - 0.1;// p.rs;
+			}
+		}
+		*/
+
+		p.f = [](int N, int, double* x, double* fx, void* pdata) {
+			int n = N - 2;
+			data* p = (data*)pdata;
+
+			blas::matrix v(n, n, p->V);
 			blas::vector xi(n, x);
 			double lambda = x[n];
 			double mu = x[n + 1];
-			*fx = -blas::dot(xi, blas::vector(n, ER));
+
+			*fx = -blas::dot(xi, blas::vector(n, p->ER));
 			*fx += lambda * (blas::sum(xi) - 1);
-			*fx += (mu / 2) * (blas::quad(CblasLower, v, xi) - sigma & sigma);
+			*fx += (mu / 2) * (blas::quad(CblasLower, v, xi) - p->sigma * p->sigma);
 		};
-		p.df = [&n, sigma, ER, V](int n, int, int, const double* x, double* df) {
-			blas::matrix v(n, n, V);
+	
+		p.df = [](int N, int, double* x, double* df, void* pdata) {
+			int n = N - 2;
+			data* p = (data*)pdata;
+
+			blas::matrix v(n, n, p->V);
 			blas::vector xi(n, x);
 			blas::vector dF(n, df);
 			double lambda = x[n];
 			double mu = x[n + 1];
-			df[n] = blas::sum(xi) - 1;
-			df[n + 1] = (blas::quad(CblasLower, v, xi) - sigma * sigma) / 2;
-			// mu V xi
-			blas::gemv(v, xi, dF.data(), dF.incr(), mu);
+			
+			// dF = mu V xi
+			blas::gemv(v, xi, dF, mu);
 			// + lambda x
-			blas::axpy(1, blas::vector(n, &lambda, 0), dF);
+			blas::axpy(1., blas::vector(n, &lambda, 0), dF);
 			// -EX
-			blas::axpy(-1, blas::vector(n, ER), dF);
+			blas::axpy(-1., blas::vector(n, p->ER), dF);
+			df[n] = blas::sum(xi) - 1;
+			df[n + 1] = (blas::quad(CblasLower, v, xi) - p->sigma * p->sigma) / 2;
 		};
-		ensure(TR_SUCCESS == p.init());
 
-		blas::vector<X> x_(n + 2, x);
-		blas::vector_alloc<X> df(n + 2);
-		ensure(TR_SUCCESS = p.check(x_.data(), df.data()));
+		//blas::vector x_(n + 2, x);
+		blas::vector_alloc<double> df(n + 2);
+		ensure(TR_SUCCESS == p.check(x, df.data()));
 		
 		int rci = 0;
-		ensure(TR_SUCCESS == p.solver(x_.data(), df.data(), rci));
+		data data = { sigma, ER, V };
+
+		ensure(TR_SUCCESS == p.solver(x, df.data(), rci, &data));
 
 		int iter = 0, st_cr = 0;
 		double r1 = 0, r2 = 0;
 		ensure(TR_SUCCESS == p.get(iter, st_cr, r1, r2));
 
 		double result;
-		p.f(n, 1, x, &result); // already computed???
+		p.f(n, 1, x, &result, &data); // already computed???
 
 		return result;
 	}

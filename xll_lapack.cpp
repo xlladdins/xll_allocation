@@ -91,7 +91,7 @@ AddIn xai_lapack_potrf(
 	Function(XLL_FPX, "xll_lapack_potrf", "LAPACK.POTRF")
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a matrix."),
-		Arg(XLL_BOOL, "_lower", "is an optional boolean indicating lower decomposition. Default is upper."),
+		Arg(XLL_BOOL, "_upper", "is an optional boolean indicating lower decomposition. Default is lwer."),
 		Arg(XLL_BOOL, "_nofill", "is an optional boolean indicated unused values are not set to 0. Default is false."),
 		})
 	.Category(CATEGORY)
@@ -103,24 +103,24 @@ The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L 
 prime indicates matrix transpose. Only the upper or lower entries of \(A\) are used.
 )")
 );
-_FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL lower, BOOL nofill)
+_FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL upper, BOOL nofill)
 {
 #pragma XLLEXPORT
 	try {
 		ensure(pa->columns == pa->rows); // fix up ld???
 
 		auto a = fpmatrix(pa);
-		lapack::potrf(lower ? CblasLower : CblasUpper, a);
+		lapack::potrf(upper ? CblasUpper : CblasLower, a);
 
 		if (nofill == FALSE) {
-			if (lower) {
-				for (int i = 0; i < a.rows(); ++i)
-					for (int j = i + 1; j < a.columns(); ++j)
-						a(i, j) = 0;
-			}
-			else { // upper
+			if (upper) {
 				for (int i = 1; i < a.rows(); ++i)
 					for (int j = 0; j < i; ++j)
+						a(i, j) = 0;
+			}
+			else { // lower
+				for (int i = 0; i < a.rows(); ++i)
+					for (int j = i + 1; j < a.columns(); ++j)
 						a(i, j) = 0;
 			}
 		}

@@ -218,9 +218,11 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 AddIn xai_allocation_maximize(
 	Function(XLL_FPX, "xll_allocation_maximize", CATEGORY ".ALLOCATION.MAXIMIZE")
 	.Arguments({
-		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
 		Arg(XLL_DOUBLE, "sigma", "is the target volatility."),
-		Arg(XLL_FP, "_bounds", "is an optional array of bounds."),
+		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
+		Arg(XLL_FP, "Cov", "is lower triangular covariance matrix."),
+		Arg(XLL_FP, "_lower", "is an optional array of lower bounds."),
+		Arg(XLL_FP, "_upper", "is an optional array of upper bounds."),
 		})
 		.Category(CATEGORY)
 	.FunctionHelp("Return the optimal portfolio with given volatility.")
@@ -228,22 +230,21 @@ AddIn xai_allocation_maximize(
 The last argument can be a two row array of lower and upper bounds.
 )xyzyx")
 );
-_FPX* WINAPI xll_allocation_maximize(HANDLEX h, double sigma, const _FPX* plu)
+_FPX* WINAPI xll_allocation_maximize(double sigma, const _FPX* pER, const _FPX* pV, const _FPX* pl, const _FPX* pu)
 {
 #pragma XLLEXPORT
 	static FPX x;
 
 	try {
-		handle<fms::allocation::portfolio<>> h_(h);
-		ensure(h_);
-		int n = h_->size();
+		unsigned n = size(*pER);
 		x.resize(1, n + 2);
-		h_->maximize(sigma, x.array(), &x[n], &x[n + 1]);
-		if (size(*plu) > 1) {
-			// if
-		}
-		else if (plu->array[0]) {
+		fms::allocation::portfolio<> p(n, pER->array, pV->array);
+		p.maximize(sigma, x.array(), &x[n], &x[n + 1]);
+		if (size(*pl) > 1) {
+			ensure(n + 2 == size(*pl));
+			ensure(n + 2 == size(*pu));
 
+			fms::allocation::maximize(sigma, n, pER->array, pV->array, x.array(), pl->array, pu->array);
 		}
 	}
 	catch (const std::exception& ex) {
