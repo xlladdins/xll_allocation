@@ -1,6 +1,6 @@
 // fms_covariance.h - covariance matrix
 #pragma once
-#include "fms_correlation.h"
+#include "fms_blas/fms_blas.h"
 
 namespace fms {
 

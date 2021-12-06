@@ -219,10 +219,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fms_allocation.h" />
     <ClInclude Include="fms_correlation.h" />
     <ClInclude Include="fms_covariance.h" />
-    <ClInclude Include="MSK.h" />
     <ClInclude Include="xll_allocation.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

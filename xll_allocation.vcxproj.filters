@@ -33,9 +33,6 @@
     <None Include="NOTES.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fms_allocation.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="xll_allocation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -43,9 +40,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fms_covariance.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MSK.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
