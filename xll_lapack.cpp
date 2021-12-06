@@ -341,7 +341,7 @@ AddIn xai_lapack_pptrf(
 		})
 		.Category(CATEGORY)
 	.FunctionHelp("Return the packed Cholesky decomposition of a.")
-	//.HelpTopic(POTRF_TOPIC)
+	//.HelpTopic(PPTRF_TOPIC)
 	.Documentation(R"(
 This function calculates the Cholesky decomposition of a symmetric positive definite matrix \(A\).
 The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
@@ -371,6 +371,9 @@ _FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
 
 	return pa;
 }
+#if 0
+#endif // 0
+
 #define POTRI_TOPIC "https://software.intel.com/content/www/us/en/develop/documentation/" \
 	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
 	"lapack-linear-equation-computational-routines/matrix-inversion-lapack-computational-routines/potri.html"

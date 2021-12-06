@@ -43,11 +43,10 @@ HANDLEX WINAPI xll_allocation(const _FPX* pCov, const _FPX* pR)
 
 	return h;
 }
-#if 0
 #ifdef _DEBUG
 
 AddIn xai_allocation_V_x(
-	Function(XLL_FPX, "xll_allocation_Cov_x", CATEGORY ".ALLOCATION.Cov_x")
+	Function(XLL_FPX, "xll_allocation_Cov_x", CATEGORY ".ALLOCATION.V_1")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle."),
 		})
@@ -63,14 +62,14 @@ _FPX* WINAPI xll_allocation_Cov_x(HANDLEX h)
 	if (h_) {		
 		int n = h_->size();
 		x.resize(1, n);
-		blas::vector(n, x.array()).copy(h_->Cov_x());
+		blas::vector(n, x.array()).copy(h_->V_1);
 	}
 
 	return x.get();
 }
 
 AddIn xai_allocation_V_EX(
-	Function(XLL_FPX, "xll_allocation_Cov_EX", CATEGORY ".ALLOCATION.Cov_EX")
+	Function(XLL_FPX, "xll_allocation_Cov_EX", CATEGORY ".ALLOCATION.V_ER")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle."),
 		})
@@ -86,7 +85,7 @@ _FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
 	if (h_) {
 		int n = h_->size();
 		x.resize(1, n);
-		blas::vector(n, x.array()).copy(h_->Cov_EX());
+		blas::vector(n, x.array()).copy(h_->V_ER);
 	}
 
 	return x.get();
@@ -94,12 +93,12 @@ _FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
 
 #endif // _DEUBG
 
+
 AddIn xai_allocation_minimize(
 	Function(XLL_FPX, "xll_allocation_minimize", CATEGORY ".ALLOCATION.MINIMIZE")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
-		Arg(XLL_DOUBLE, "r", "is the target realized return."),
-		Arg(XLL_FP, "_bounds", "is an optional array of bounds."),
+		Arg(XLL_DOUBLE, "R", "is the target realized return."),
 		})
 		.Category(CATEGORY)
 	.FunctionHelp("Return the minimum volatility with given return.")
@@ -107,7 +106,7 @@ AddIn xai_allocation_minimize(
 The last argument can be a two row array of lower and upper bounds.
 )xyzyx")
 );
-_FPX* WINAPI xll_allocation_minimize(HANDLEX h, double r, const _FPX* plu)
+_FPX* WINAPI xll_allocation_minimize(HANDLEX h, double R)
 {
 #pragma XLLEXPORT
 	static FPX x;
@@ -117,14 +116,7 @@ _FPX* WINAPI xll_allocation_minimize(HANDLEX h, double r, const _FPX* plu)
 		ensure(h_);
 		int n = h_->size();
 		x.resize(1, n + 2);
-		h_->minimize(r, x.array(), &x[n], &x[n + 1]);
-		if (size(*plu) > 1) {
-			ensure(2 == plu->rows);
-			ensure(n + 2 == plu->columns);
-		}
-		else if (plu->array[0]) {
-
-		}
+		h_->minimum(R, x.array());
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -143,7 +135,7 @@ AddIn xai_allocation_minimum(
 	.FunctionHelp("Return the minimum volatility.")
 	.Documentation(R"xyzyx()xyzyx")
 );
-double WINAPI xll_allocation_minimum(HANDLEX h, double r)
+double WINAPI xll_allocation_minimum(HANDLEX h, double R)
 {
 #pragma XLLEXPORT
 	double sigma = XLL_NAN;
@@ -151,7 +143,7 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 	try {
 		handle<fms::allocation> h_(h);
 		ensure(h_);
-		sigma = h_->minimize(r, nullptr);
+		sigma = h_->minimum(R, nullptr);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -160,6 +152,37 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 	return sigma;
 }
 
+AddIn xai_allocation_fmin(
+	Function(XLL_DOUBLE, "xll_allocation_fmin", CATEGORY ".ALLOCATION.FMIN")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "R", "is the target expected realized return."),
+		Arg(XLL_FPX, "x", "is a vector of xi, lambda, mu.")
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Return the fmin volatility.")
+	.Documentation(R"xyzyx()xyzyx")
+);
+double WINAPI xll_allocation_fmin(HANDLEX h, double R, _FPX* px)
+{
+#pragma XLLEXPORT
+	double sigma = XLL_NAN;
+
+	try {
+		auto N = size(*px);
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		ensure(N == h_->size() + 2u);
+		sigma = fms::fmin(R, vec(N, px->array), h_->L, h_->ER);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return sigma;
+}
+
+#if 0
 AddIn xai_allocation_maximize(
 	Function(XLL_FPX, "xll_allocation_maximize", CATEGORY ".ALLOCATION.MAXIMIZE")
 	.Arguments({
