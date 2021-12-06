@@ -4,3 +4,6 @@
 [submodule "fms_blas"]
 	path = fms_blas
 	url = https://github.com/keithalewis/fms_blas
+[submodule "fms_allocation"]
+	path = fms_allocation
+	url = https://github.com/keithalewis/fms_allocation
