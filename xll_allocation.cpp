@@ -2,6 +2,7 @@
 #include "xll_allocation.h"
 
 using namespace xll;
+using namespace fms;
 
 XLL_CONST(DOUBLE, DBL_MAX, DBL_MAX, "Maximum double value.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
 XLL_CONST(DOUBLE, DBL_EPSILON, DBL_EPSILON, "Smalles double value for which 1 + epsilon != 1.", "CATEGORY", "https://docs.microsoft.com/en-us/cpp/cpp/floating-limits?view=msvc-160");
@@ -11,8 +12,8 @@ XLL_CONST(DOUBLE, DBL_EPSILON, DBL_EPSILON, "Smalles double value for which 1 + 
 AddIn xai_allocation(
 	Function(XLL_HANDLE, "xll_allocation", "\\" CATEGORY ".ALLOCATION")
 	.Arguments({
-		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
 		Arg(XLL_FP, "Cov", "is lower triangular covariance matrix."),
+		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
 		// Arg(XLL_BOOL, "_uplo", "is and optional boolean indicating the covariance matrix is upper."),
 		})
 	.Uncalced()
@@ -20,18 +21,20 @@ AddIn xai_allocation(
 	.FunctionHelp("Return handle to portfolio.")
 	.Documentation(R"xyzyx()xyzyx")
 );
-HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
+HANDLEX WINAPI xll_allocation(const _FPX* pCov, const _FPX* pR)
 {
 #pragma XLLEXPORT
 	HANDLEX h = INVALID_HANDLEX;
 
 	try {
-		int n = size(*pR);
+		auto n = size(*pR);
 
-		ensure(n == pCov->rows);
-		ensure(n == pCov->columns);
+		ensure((n*(n+1)/2) == size(*pCov));
 
-		handle<fms::allocation> h_(new fms::allocation(n, pR->array, pCov->array));
+		vec R(n, (double*)pR->array);
+		mat L(n, n, (double*)pCov->array);
+
+		handle<fms::allocation> h_(new fms::allocation(L, R));
 		h = h_.get();
 	}
 	catch (const std::exception& ex) {
@@ -40,7 +43,7 @@ HANDLEX WINAPI xll_allocation(const _FPX* pR, const _FPX* pCov)
 
 	return h;
 }
-
+#if 0
 #ifdef _DEBUG
 
 AddIn xai_allocation_V_x(
@@ -56,7 +59,7 @@ _FPX* WINAPI xll_allocation_Cov_x(HANDLEX h)
 #pragma XLLEXPORT
 	static FPX x;
 	
-	handle<fms::allocation::portfolio<>> h_(h);
+	handle<fms::allocation> h_(h);
 	if (h_) {		
 		int n = h_->size();
 		x.resize(1, n);
@@ -79,7 +82,7 @@ _FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
 #pragma XLLEXPORT
 	static FPX x;
 
-	handle<fms::allocation::portfolio<>> h_(h);
+	handle<fms::allocation> h_(h);
 	if (h_) {
 		int n = h_->size();
 		x.resize(1, n);
@@ -110,7 +113,7 @@ _FPX* WINAPI xll_allocation_minimize(HANDLEX h, double r, const _FPX* plu)
 	static FPX x;
 
 	try {
-		handle<fms::allocation::portfolio<>> h_(h);
+		handle<fms::allocation> h_(h);
 		ensure(h_);
 		int n = h_->size();
 		x.resize(1, n + 2);
@@ -146,7 +149,7 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double r)
 	double sigma = XLL_NAN;
 
 	try {
-		handle<fms::allocation::portfolio<>> h_(h);
+		handle<fms::allocation> h_(h);
 		ensure(h_);
 		sigma = h_->minimize(r, nullptr);
 	}
@@ -180,7 +183,7 @@ _FPX* WINAPI xll_allocation_maximize(double sigma, const _FPX* pER, const _FPX* 
 	try {
 		unsigned n = size(*pER);
 		x.resize(1, n + 2);
-		fms::allocation::portfolio<> p(n, pER->array, pV->array);
+		fms::allocation> p(n, pER->array, pV->array);
 		p.maximize(sigma, x.array(), &x[n], &x[n + 1]);
 		if (size(*pl) > 1) {
 			ensure(n + 2 == size(*pl));
@@ -222,3 +225,4 @@ double WINAPI xll_allocation_maximum(HANDLEX h, double r)
 
 	return sigma;
 }
+#endif // 0
