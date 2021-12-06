@@ -12,7 +12,7 @@ XLL_CONST(DOUBLE, DBL_EPSILON, DBL_EPSILON, "Smalles double value for which 1 + 
 AddIn xai_allocation(
 	Function(XLL_HANDLE, "xll_allocation", "\\" CATEGORY ".ALLOCATION")
 	.Arguments({
-		Arg(XLL_FP, "Cov", "is lower triangular covariance matrix."),
+		Arg(XLL_FP, "Cov", "is lower triangular packed covariance matrix."),
 		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
 		// Arg(XLL_BOOL, "_uplo", "is and optional boolean indicating the covariance matrix is upper."),
 		})
