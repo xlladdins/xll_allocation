@@ -21,7 +21,7 @@ AddIn xai_allocation(
 	.FunctionHelp("Return handle to portfolio.")
 	.Documentation(R"xyzyx()xyzyx")
 );
-HANDLEX WINAPI xll_allocation(const _FPX* pCov, const _FPX* pR)
+HANDLEX WINAPI xll_allocation(const _FPX* pL, const _FPX* pR)
 {
 #pragma XLLEXPORT
 	HANDLEX h = INVALID_HANDLEX;
@@ -29,10 +29,10 @@ HANDLEX WINAPI xll_allocation(const _FPX* pCov, const _FPX* pR)
 	try {
 		auto n = size(*pR);
 
-		ensure((n*(n+1)/2) == size(*pCov));
+		ensure((n*(n+1)/2) == size(*pL));
 
 		vec R(n, (double*)pR->array);
-		mat L(n, n, (double*)pCov->array);
+		mat L(n, n, (double*)pL->array);
 
 		handle<fms::allocation> h_(new fms::allocation(L, R));
 		h = h_.get();
@@ -44,6 +44,70 @@ HANDLEX WINAPI xll_allocation(const _FPX* pCov, const _FPX* pR)
 	return h;
 }
 #ifdef _DEBUG
+
+AddIn xai_allocation_fmin(
+	Function(XLL_DOUBLE, "xll_allocation_fmin", CATEGORY ".ALLOCATION.FMIN")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "R", "is the target expected realized return."),
+		Arg(XLL_FPX, "x", "is a vector of xi, lambda, mu.")
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the fmin volatility.")
+	.Documentation(R"xyzyx()xyzyx")
+);
+double WINAPI xll_allocation_fmin(HANDLEX h, double R, _FPX* px)
+{
+#pragma XLLEXPORT
+	double sigma = XLL_NAN;
+
+	try {
+		auto N = size(*px);
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		ensure(N == h_->size() + 2u);
+		sigma = fms::fmin(R, vec(N, px->array), h_->L, h_->ER);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return sigma;
+}
+
+AddIn xai_allocation_gmin(
+	Function(XLL_FPX, "xll_allocation_gmin", CATEGORY ".ALLOCATION.GMIN")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "R", "is the target expected realized return."),
+		Arg(XLL_FPX, "x", "is a vector of xi, lambda, mu.")
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the gmin gradient.")
+	.Documentation(R"xyzyx()xyzyx")
+);
+_FPX* WINAPI xll_allocation_gmin(HANDLEX h, double R, _FPX* px)
+{
+#pragma XLLEXPORT
+	static FPX g;
+
+	try {
+		auto N = size(*px);
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		ensure(N == h_->size() + 2u);
+		g.resize(1, N);
+		vec g_(N, g.array());
+		fms::gmin(R, vec(N, px->array), h_->L, h_->ER, g_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return g.get();
+}
 
 AddIn xai_allocation_V_x(
 	Function(XLL_FPX, "xll_allocation_Cov_x", CATEGORY ".ALLOCATION.V_1")
@@ -91,6 +155,32 @@ _FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
 	return x.get();
 }
 
+AddIn xai_allocation_ABCD(
+	Function(XLL_FPX, "xll_allocation_ABCD", CATEGORY ".ALLOCATION.ABCD")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle."),
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Return A, B, C, D.")
+);
+_FPX* WINAPI xll_allocation_ABCD(HANDLEX h)
+{
+#pragma XLLEXPORT
+	static FPX x(1,4);
+
+	handle<fms::allocation> h_(h);
+	if (h_) {
+		x[0] = h_->A;
+		x[1] = h_->B;
+		x[2] = h_->C;
+		x[3] = h_->D;
+	}
+	else {
+		return 0;
+	}
+
+	return x.get();
+}
 #endif // _DEUBG
 
 
@@ -116,7 +206,8 @@ _FPX* WINAPI xll_allocation_minimize(HANDLEX h, double R)
 		ensure(h_);
 		int n = h_->size();
 		x.resize(1, n + 2);
-		h_->minimum(R, x.array());
+		auto x_ = vec(n + 2, x.array());
+		h_->minimum(R, x_);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -143,7 +234,8 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double R)
 	try {
 		handle<fms::allocation> h_(h);
 		ensure(h_);
-		sigma = h_->minimum(R, nullptr);
+		auto v = vec{};
+		sigma = h_->minimum(R, v);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -152,35 +244,7 @@ double WINAPI xll_allocation_minimum(HANDLEX h, double R)
 	return sigma;
 }
 
-AddIn xai_allocation_fmin(
-	Function(XLL_DOUBLE, "xll_allocation_fmin", CATEGORY ".ALLOCATION.FMIN")
-	.Arguments({
-		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
-		Arg(XLL_DOUBLE, "R", "is the target expected realized return."),
-		Arg(XLL_FPX, "x", "is a vector of xi, lambda, mu.")
-		})
-		.Category(CATEGORY)
-	.FunctionHelp("Return the fmin volatility.")
-	.Documentation(R"xyzyx()xyzyx")
-);
-double WINAPI xll_allocation_fmin(HANDLEX h, double R, _FPX* px)
-{
-#pragma XLLEXPORT
-	double sigma = XLL_NAN;
 
-	try {
-		auto N = size(*px);
-		handle<fms::allocation> h_(h);
-		ensure(h_);
-		ensure(N == h_->size() + 2u);
-		sigma = fms::fmin(R, vec(N, px->array), h_->L, h_->ER);
-	}
-	catch (const std::exception& ex) {
-		XLL_ERROR(ex.what());
-	}
-
-	return sigma;
-}
 
 #if 0
 AddIn xai_allocation_maximize(

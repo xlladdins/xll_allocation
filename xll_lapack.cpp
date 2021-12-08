@@ -214,6 +214,39 @@ _FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 	return c.get();
 }
 
+AddIn xai_blas_tpmv(
+	Function(XLL_FPX, "xll_blas_tpmv", "BLAS.TPMV")
+	.Arguments({
+		Arg(XLL_FPX, "a", "is a packed triangular matrix."),
+		Arg(XLL_FPX, "x", "is a vector."),
+		Arg(XLL_BOOL, "_upper", "indicates a is upper. Default is lower")
+		})
+		.Category("BLAS")
+	.FunctionHelp("Return the matrix product of a and x.")
+);
+_FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper)
+{
+#pragma XLLEXPORT
+	static FPX c;
+
+	try {
+		auto n = size(*px);
+		c.resize(px->rows, px->columns);
+		std::copy(begin(*px), end(*px), c.array());
+		auto c_ = fpvector(c.get());
+		auto a_ = blas::matrix<double>(n, n, pa->array);
+		blas::tpmv(upper ? CblasUpper : CblasLower, a_, c_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return c.get();
+}
+
+
 AddIn xai_pack(
 	Function(XLL_FPX, "xll_pack", "PACK")
 	.Arguments({
