@@ -45,6 +45,48 @@ HANDLEX WINAPI xll_allocation(const _FPX* pL, const _FPX* pR)
 }
 #ifdef _DEBUG
 
+// non-owning vector
+inline blas::vector<double> fpvector(_FPX* pa)
+{
+	return blas::vector<double>(size(*pa), pa->array, 1);
+}
+// non-owning matrix
+inline blas::matrix<double> fpmatrix(_FPX* pa)
+{
+	return blas::matrix<double>(pa->rows, pa->columns, pa->array);
+}
+
+AddIn xai_normalize(
+	Function(XLL_FPX, "xll_normalize", CATEGORY ".NORMALIZE")
+	.Arguments({
+		Arg(XLL_FPX, "x", "is a vector."),
+		Arg(XLL_FPX, "y", "is a vector."),
+		Arg(XLL_DOUBLE, "a", "is a number."),
+		Arg(XLL_DOUBLE, "b", "is a number."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return xi = Ax + By, xi'x = a, xi'y = b.")
+);
+_FPX* WINAPI xll_normalize(_FPX* px, _FPX* py, double a, double b)
+{
+#pragma XLLEXPORT
+	static FPX xi;
+
+	try {
+		ensure(size(*px) == size(*py));
+		xi.resize(px->rows, px->columns);
+		auto xi_ = fpvector(xi.get());
+		normalize(fpvector(px), fpvector(py), a, b, xi_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return xi.get();
+}
+
 AddIn xai_allocation_fmin(
 	Function(XLL_DOUBLE, "xll_allocation_fmin", CATEGORY ".ALLOCATION.FMIN")
 	.Arguments({
@@ -109,15 +151,15 @@ _FPX* WINAPI xll_allocation_gmin(HANDLEX h, double R, _FPX* px)
 	return g.get();
 }
 
-AddIn xai_allocation_V_x(
-	Function(XLL_FPX, "xll_allocation_Cov_x", CATEGORY ".ALLOCATION.V_1")
+AddIn xai_allocation_V_1(
+	Function(XLL_FPX, "xll_allocation_V_1", CATEGORY ".ALLOCATION.V_1")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle."),
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Cov inverse x.")
 );
-_FPX* WINAPI xll_allocation_Cov_x(HANDLEX h)
+_FPX* WINAPI xll_allocation_V_1(HANDLEX h)
 {
 #pragma XLLEXPORT
 	static FPX x;
@@ -132,15 +174,15 @@ _FPX* WINAPI xll_allocation_Cov_x(HANDLEX h)
 	return x.get();
 }
 
-AddIn xai_allocation_V_EX(
-	Function(XLL_FPX, "xll_allocation_Cov_EX", CATEGORY ".ALLOCATION.V_ER")
+AddIn xai_allocation_V_ER(
+	Function(XLL_FPX, "xll_allocation_V_ER", CATEGORY ".ALLOCATION.V_ER")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle."),
 		})
 		.Category(CATEGORY)
 	.FunctionHelp("Cov inverse E[X].")
 );
-_FPX* WINAPI xll_allocation_Cov_EX(HANDLEX h)
+_FPX* WINAPI xll_allocation_V_ER(HANDLEX h)
 {
 #pragma XLLEXPORT
 	static FPX x;
