@@ -31,10 +31,7 @@ HANDLEX WINAPI xll_allocation(const _FPX* pL, const _FPX* pR)
 
 		ensure((n*(n+1)/2) == size(*pL));
 
-		vec R(n, (double*)pR->array);
-		mat L(n, n, (double*)pL->array);
-
-		handle<fms::allocation> h_(new fms::allocation(L, R));
+		handle<fms::allocation> h_(new fms::allocation(n, pL->array, pR->array));
 		h = h_.get();
 	}
 	catch (const std::exception& ex) {
@@ -76,7 +73,7 @@ _FPX* WINAPI xll_normalize(_FPX* px, _FPX* py, double a, double b)
 		ensure(size(*px) == size(*py));
 		xi.resize(px->rows, px->columns);
 		auto xi_ = fpvector(xi.get());
-		normalize(fpvector(px), fpvector(py), a, b, xi_);
+		project(fpvector(px), fpvector(py), a, b, xi_);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());

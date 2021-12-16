@@ -203,7 +203,7 @@ _FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 		ensure(pa->columns == pb->rows);
 
 		c.resize(pa->rows, pb->columns);
-		blas::gemm(fpmatrix(pa), fpmatrix(pb), c.array());
+		blas::gemm(fpmatrix(pa), fpmatrix(pb), fpmatrix(c.get()));
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -232,10 +232,10 @@ _FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper)
 	try {
 		auto n = size(*px);
 		c.resize(px->rows, px->columns);
-		std::copy(begin(*px), end(*px), c.array());
 		auto c_ = fpvector(c.get());
-		auto a_ = blas::matrix<double>(n, n, pa->array);
-		blas::tpmv(upper ? CblasUpper : CblasLower, a_, c_);
+		c_.copy(n, px->array);
+		blas::tp a(n, pa->array, upper ? CblasUpper : CblasLower);
+		blas::tpmv(a, c_);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -305,7 +305,7 @@ _FPX* WINAPI xll_unpack(_FPX* pl)
 	int n = static_cast<int>((-1 + d) / 2);
 	a.resize(n, n);
 
-	blas::unpack(n, pl->array, a.array());
+	blas::unpacks(n, pl->array, a.array());
 
 	return a.get();
 }
@@ -337,7 +337,7 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL upper, BOOL nofill)
 		ensure(pa->columns == pa->rows); // fix up ld???
 
 		auto a = fpmatrix(pa);
-		lapack::potrf(upper ? CblasUpper : CblasLower, a);
+		potrf(upper ? CblasUpper : CblasLower, a);
 
 		if (nofill == FALSE) {
 			if (upper) {
@@ -393,8 +393,8 @@ _FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
 		auto d = sqrt(1 + 8 * m);
 		int n = static_cast<int>((-1 + d) / 2);
 
-		auto a = blas::matrix(n, n, pa->array);
-		lapack::pptrf(upper ? CblasUpper : CblasLower, a);
+		blas::tp a(n, pa->array, upper ? CblasUpper : CblasLower);
+		pptrf(a);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -434,7 +434,7 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 		ensure(pa->columns == pa->rows);
 
 		auto a = fpmatrix(pa);
-		lapack::potri(lower ? CblasLower : CblasUpper, a);
+		potri(lower ? CblasLower : CblasUpper, a);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
