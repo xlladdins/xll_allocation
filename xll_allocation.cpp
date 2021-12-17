@@ -12,7 +12,7 @@ XLL_CONST(DOUBLE, DBL_EPSILON, DBL_EPSILON, "Smalles double value for which 1 + 
 AddIn xai_allocation(
 	Function(XLL_HANDLE, "xll_allocation", "\\" CATEGORY ".ALLOCATION")
 	.Arguments({
-		Arg(XLL_FP, "Cov", "is lower triangular packed covariance matrix."),
+		Arg(XLL_FP, "L", "is lower triangular packed covariance matrix."),
 		Arg(XLL_FP, "ER", "is a vector of expected realized returns."),
 		// Arg(XLL_BOOL, "_uplo", "is and optional boolean indicating the covariance matrix is upper."),
 		})
@@ -28,7 +28,6 @@ HANDLEX WINAPI xll_allocation(const _FPX* pL, const _FPX* pR)
 
 	try {
 		auto n = size(*pR);
-
 		ensure((n*(n+1)/2) == size(*pL));
 
 		handle<fms::allocation> h_(new fms::allocation(n, pL->array, pR->array));
@@ -53,27 +52,28 @@ inline blas::matrix<double> fpmatrix(_FPX* pa)
 	return blas::matrix<double>(pa->rows, pa->columns, pa->array);
 }
 
-AddIn xai_normalize(
-	Function(XLL_FPX, "xll_normalize", CATEGORY ".NORMALIZE")
+AddIn xai_project(
+	Function(XLL_FPX, "xll_project", CATEGORY ".PROJECT")
 	.Arguments({
+		Arg(XLL_FPX, "z", "is a vector."),
 		Arg(XLL_FPX, "x", "is a vector."),
 		Arg(XLL_FPX, "y", "is a vector."),
 		Arg(XLL_DOUBLE, "a", "is a number."),
 		Arg(XLL_DOUBLE, "b", "is a number."),
 		})
 	.Category(CATEGORY)
-	.FunctionHelp("Return xi = Ax + By, xi'x = a, xi'y = b.")
+	.FunctionHelp("Project z onto z'x = a, z'y = b.")
 );
-_FPX* WINAPI xll_normalize(_FPX* px, _FPX* py, double a, double b)
+_FPX* WINAPI xll_project(_FPX* pz, _FPX* px, _FPX* py, double a, double b)
 {
 #pragma XLLEXPORT
 	static FPX xi;
 
 	try {
+		ensure(size(*pz) == size(*px));
 		ensure(size(*px) == size(*py));
-		xi.resize(px->rows, px->columns);
-		auto xi_ = fpvector(xi.get());
-		project(fpvector(px), fpvector(py), a, b, xi_);
+		auto z = fpvector(pz);
+		project(fpvector(px), fpvector(py), a, b, z);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -81,7 +81,7 @@ _FPX* WINAPI xll_normalize(_FPX* px, _FPX* py, double a, double b)
 		return nullptr;
 	}
 
-	return xi.get();
+	return pz;
 }
 
 AddIn xai_allocation_fmin(

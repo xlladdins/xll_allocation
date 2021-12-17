@@ -219,12 +219,13 @@ AddIn xai_blas_tpmv(
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a packed triangular matrix."),
 		Arg(XLL_FPX, "x", "is a vector."),
-		Arg(XLL_BOOL, "_upper", "indicates a is upper. Default is lower")
+		Arg(XLL_BOOL, "_upper", "indicates a is upper. Default is false"),
+		Arg(XLL_BOOL, "_trans", "indicates a is transposed. Default is false"),
 		})
 		.Category("BLAS")
 	.FunctionHelp("Return the matrix product of a and x.")
 );
-_FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper)
+_FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper, BOOL trans)
 {
 #pragma XLLEXPORT
 	static FPX c;
@@ -235,7 +236,12 @@ _FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper)
 		auto c_ = fpvector(c.get());
 		c_.copy(n, px->array);
 		blas::tp a(n, pa->array, upper ? CblasUpper : CblasLower);
-		blas::tpmv(a, c_);
+		if (trans) {
+			blas::tpmv(a.transpose(), c_);
+		}
+		else {
+			blas::tpmv(a, c_);
+		}
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -288,11 +294,12 @@ AddIn xai_unpack(
 	Function(XLL_FPX, "xll_unpack", "UNPACK")
 	.Arguments({
 		Arg(XLL_FPX, "L", "is a packed matrix."),
+		Arg(XLL_LONG, "_ul", "is an optional upper (>0) or lower (<0) flag. Default is 0.")
 		})
-		.FunctionHelp("Unpack L into symmetric A.")
+	.FunctionHelp("Unpack L into symmetric (ul = 0), upper (ul > 0), or lower (ul < 0) A.")
 	.Category(CATEGORY)
 );
-_FPX* WINAPI xll_unpack(_FPX* pl)
+_FPX* WINAPI xll_unpack(_FPX* pl, long ul)
 {
 #pragma XLLEXPORT
 	static FPX a;
@@ -304,8 +311,17 @@ _FPX* WINAPI xll_unpack(_FPX* pl)
 	auto d = sqrt(1 + 8 * m);
 	int n = static_cast<int>((-1 + d) / 2);
 	a.resize(n, n);
+	fpmatrix(a.get()).fill(0);
 
-	blas::unpacks(n, pl->array, a.array());
+	if (ul > 0) {
+		blas::unpacku(n, pl->array, a.array());
+	}
+	else if (ul < 0) {
+		blas::unpackl(n, pl->array, a.array());
+	}
+	else {
+		blas::unpacks(n, pl->array, a.array());
+	}
 
 	return a.get();
 }
