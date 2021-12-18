@@ -115,15 +115,23 @@ _FPX* WINAPI xll_array_get(HANDLEX h)
 	return pa;
 }
 
+
+constexpr long ARRAY_MAX = 1 << 20; // maximum row/column size
+
 // non-owning vector
 inline blas::vector<double> fpvector(_FPX* pa)
 {
 	return blas::vector<double>(size(*pa), pa->array, 1);
 }
 // non-owning matrix
-inline blas::matrix<double> fpmatrix(_FPX* pa)
+inline blas::matrix<double> fpmatrix(_FPX* pa, CBLAS_TRANSPOSE trans = CblasNoTrans)
 {
-	return blas::matrix<double>(pa->rows, pa->columns, pa->array);
+	if (size(*pa) == 1) {
+		handle<blas::matrix<double>> a(pa->array[0]);
+		return a.ptr() ? *a.ptr() : blas::matrix<double>{};
+	}
+	
+	return blas::matrix<double>(pa->rows, pa->columns, pa->array, trans);
 }
 
 AddIn xai_blas_vector_(
@@ -155,8 +163,8 @@ HANDLEX WINAPI xll_blas_vector_(_FPX* pv)
 	return result;
 }
 
-AddIn xai_blas_matrix(
-	Function(XLL_HANDLEX, "xll_blas_matrix", "\\BLAS.MATRIX")
+AddIn xai_blas_matrix_(
+	Function(XLL_HANDLEX, "xll_blas_matrix_", "\\BLAS.MATRIX")
 	.Arguments({
 		Arg(XLL_FPX, "v", "is an array of matrix elments."),
 		Arg(XLL_BOOL, "_trans", "is an optional boolean indicating the matrix is transposed. Default is false.")
@@ -165,13 +173,44 @@ AddIn xai_blas_matrix(
 	.Category("BLAS")
 	.FunctionHelp("Return a handle to a BLAS matrix.")
 );
-HANDLEX WINAPI xll_blas_matrix(_FPX* pv, BOOL t)
+HANDLEX WINAPI xll_blas_matrix_(_FPX* pv, BOOL t)
 {
 #pragma XLLEXPORT
 	HANDLEX result = INVALID_HANDLEX;
 
 	try {
 		handle<blas::matrix<double>> h(new blas::matrix_alloc<double>(pv->rows, pv->columns, pv->array, t ? CblasTrans : CblasNoTrans));
+		ensure(h);
+		result = h.get();
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+	catch (...) {
+		XLL_ERROR(__FUNCTION__ ": unknown exception");
+	}
+
+	return result;
+}
+
+AddIn xai_blas_matrix(
+	Function(XLL_HANDLEX, "xll_blas_matrix", "BLAS.TRANS")
+	.Arguments({
+		Arg(XLL_FPX, "v", "is an array of matrix elments."),
+		})
+	.Uncalced()
+	.Category("BLAS")
+	.FunctionHelp("Return a temporary handle to a BLAS matrix.")
+);
+HANDLEX WINAPI xll_blas_matrix(_FPX* pa)
+{
+#pragma XLLEXPORT
+	HANDLEX result = INVALID_HANDLEX;
+
+	try {
+		blas::matrix<double> a = fpmatrix(pa);
+		a = a.transpose();
+		handle<blas::matrix<double>> h(new blas::matrix<double>(a));
 		ensure(h);
 		result = h.get();
 	}
@@ -193,6 +232,9 @@ AddIn xai_blas_gemm(
 		})
 	.Category("BLAS")
 	.FunctionHelp("Return the matrix product of a and b.")
+	.Documentation(R"(
+Compute the matrix product \(c_{i,j} = \sum_k a_{i,k} b_{k,j}\).
+)")
 );
 _FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 {
@@ -200,10 +242,12 @@ _FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 	static FPX c;
 
 	try {
-		ensure(pa->columns == pb->rows);
+		auto a = fpmatrix(pa);
+		auto b = fpmatrix(pb);
+		ensure(a.columns() == b.rows());
 
-		c.resize(pa->rows, pb->columns);
-		blas::gemm(fpmatrix(pa), fpmatrix(pb), fpmatrix(c.get()));
+		c.resize(a.rows(), b.columns());
+		blas::gemm(a, b, fpmatrix(c.get()));
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -223,7 +267,12 @@ AddIn xai_blas_tpmv(
 		Arg(XLL_BOOL, "_trans", "indicates a is transposed. Default is false"),
 		})
 		.Category("BLAS")
-	.FunctionHelp("Return the matrix product of a and x.")
+	.FunctionHelp("Return the product of packed triangular matrix a and vector x.")
+	.Documentation(R"(
+A triangular matrix is a square matrix that is either lower, with entries above the diagonal equal to 0, or
+upper, with entries below the main diagonal equal to 0. 
+)")
+	.SeeAlso({"PACK", "UNPACK"})
 );
 _FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper, BOOL trans)
 {
@@ -252,7 +301,6 @@ _FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper, BOOL trans)
 	return c.get();
 }
 
-
 AddIn xai_pack(
 	Function(XLL_FPX, "xll_pack", "PACK")
 	.Arguments({
@@ -265,6 +313,7 @@ AddIn xai_pack(
 Pack lower \([a_{ij}\) as \([a_{00}, a_{10}, a_{11}, a_{20}, a_{21}, a_{22},\ldots]\)
 and upper as \([a_{00}, a_{01}, a_{11}, a_{02}, a_{12}, a_{22},\ldots]\).
 )")
+	.SeeAlso({ "UNPACK" })
 );
 _FPX* WINAPI xll_pack(_FPX* pa, BOOL upper)
 {
@@ -296,8 +345,12 @@ AddIn xai_unpack(
 		Arg(XLL_FPX, "L", "is a packed matrix."),
 		Arg(XLL_LONG, "_ul", "is an optional upper (>0) or lower (<0) flag. Default is 0.")
 		})
-	.FunctionHelp("Unpack L into symmetric (ul = 0), upper (ul > 0), or lower (ul < 0) A.")
+	.FunctionHelp("Unpack L into symmetric (ul = 0), upper triangular (ul > 0), or lower triangular (ul < 0) A.")
 	.Category(CATEGORY)
+	.Documentation(R"(
+Restore a packed matrix to its full form.
+)")
+	.SeeAlso({"PACK"})
 );
 _FPX* WINAPI xll_unpack(_FPX* pl, long ul)
 {
@@ -392,9 +445,9 @@ AddIn xai_lapack_pptrf(
 	.FunctionHelp("Return the packed Cholesky decomposition of a.")
 	//.HelpTopic(PPTRF_TOPIC)
 	.Documentation(R"(
-This function calculates the Cholesky decomposition of a symmetric positive definite matrix \(A\).
+This function calculates the Cholesky decomposition of a packed symmetric positive definite matrix \(A\).
 The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
-prime indicates matrix transpose. Matrix must be in packed format
+prime indicates matrix transpose. The matrix must be in packed format.
 )")
 );
 _FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
@@ -472,7 +525,7 @@ AddIn xai_lapack_quad(
 	.FunctionHelp("Return the x'Ax.")
 	//.HelpTopic(quad_TOPIC)
 	.Documentation(R"(
-
+Calculate the quadratic form \(\sum_{i,j} a_{i,j} x_i x_j\).
 )")
 );
 double WINAPI xll_lapack_quad(_FPX* pa, _FPX* px, BOOL upper)

@@ -11,6 +11,9 @@ AddIn xai_fms_mean(
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Return means of column vectors.")
+	.Documentation(R"(
+Return a one row array of the mean of each column.
+)")
 );
 _FPX* WINAPI xll_fms_mean(const _FPX* pa)
 {
@@ -37,6 +40,10 @@ AddIn xai_fms_cov(
 		})
 		.Category(CATEGORY)
 	.FunctionHelp("Return mean of columns in the first row and covariance of column vectors below.")
+	.Documentation(R"(
+Return a \((n + 1)\times n\) matrix where the first has the column means and the remaining
+\(n\times n\) matrix is the sample covariance of the columns.
+)")
 );
 _FPX* WINAPI xll_fms_cov(const _FPX* pa)
 {

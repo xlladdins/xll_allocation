@@ -19,7 +19,10 @@ AddIn xai_allocation(
 	.Uncalced()
 	.Category(CATEGORY)
 	.FunctionHelp("Return handle to portfolio.")
-	.Documentation(R"xyzyx()xyzyx")
+	.Documentation(R"xyzyx(
+Given a one-period model \(x\in\bm{R}^n\to X\colon\Omega\to\bm{R}^n\) on a probability space
+define the utility \(u(\xi) = \xi\cdot E[X] - \frac{\tau}{2}\operatorname{Var}(\xi\cdot X)\).
+)xyzyx")
 );
 HANDLEX WINAPI xll_allocation(const _FPX* pL, const _FPX* pR)
 {
@@ -93,7 +96,9 @@ AddIn xai_allocation_fmin(
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Return the fmin volatility.")
-	.Documentation(R"xyzyx()xyzyx")
+	.Documentation(R"xyzyx(
+\(f_{\rm min}(\xi,\lambda,\mu) = \xi\cdot E[R] - \lambda(\xi'1 - 1) - \mu(xi'E[X] - R)\).
+)xyzyx")
 );
 double WINAPI xll_allocation_fmin(HANDLEX h, double R, _FPX* px)
 {
