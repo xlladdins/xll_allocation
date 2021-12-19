@@ -70,8 +70,6 @@ AddIn xai_project(
 _FPX* WINAPI xll_project(_FPX* pz, _FPX* px, _FPX* py, double a, double b)
 {
 #pragma XLLEXPORT
-	static FPX xi;
-
 	try {
 		ensure(size(*pz) == size(*px));
 		ensure(size(*px) == size(*py));
@@ -85,6 +83,98 @@ _FPX* WINAPI xll_project(_FPX* pz, _FPX* px, _FPX* py, double a, double b)
 	}
 
 	return pz;
+}
+
+AddIn xai_project_pi(
+	Function(XLL_FPX, "xll_project_pi", CATEGORY ".PI")
+	.Arguments({
+		Arg(XLL_FPX, "z", "is a vector."),
+		Arg(XLL_FPX, "x", "is a vector."),
+		Arg(XLL_DOUBLE, "a", "is a number."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Project z onto z >= 0, z'x = a")
+);
+_FPX* WINAPI xll_project_pi(_FPX* pz, _FPX* px, double a)
+{
+#pragma XLLEXPORT
+	static FPX xi;
+
+	try {
+		ensure(size(*pz) == size(*px));
+		auto z = fpvector(pz);
+		pi(fpvector(px), a, z);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pz;
+}
+
+AddIn xai_allocation_value(
+	Function(XLL_DOUBLE, "xll_allocation_value", CATEGORY ".ALLOCATION.VALUE")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		Arg(XLL_FPX, "x", "is a vector of xi, lambda, mu.")
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the value of the portfolio.")
+	.Documentation(R"xyzyx(
+Return \(\xi\cdot E[R] - \tau (\xi'V\xi)/2\).
+)xyzyx")
+);
+double WINAPI xll_allocation_value(HANDLEX h, double tau, _FPX* pxi)
+{
+#pragma XLLEXPORT
+	double val = XLL_NAN;
+
+	try {
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		val = h_->value(tau, fpvector(pxi));
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return val;
+}
+
+AddIn xai_allocation_optimize(
+	Function(XLL_FPX, "xll_allocation_optimize", CATEGORY ".ALLOCATION.OPTIMIZE")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the optimum portfolio.")
+	.Documentation(R"xyzyx(
+Return \(V^{-1}E[R]/\tau).
+)xyzyx")
+);
+_FPX* WINAPI xll_allocation_optimize(HANDLEX h, double tau)
+{
+#pragma XLLEXPORT
+	static FPX xi;
+
+	try {
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		xi.resize(1, h_->size());
+		auto xi_ = fpvector(xi.get());
+		h_->optimize(tau, xi_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return xi.get();
 }
 
 AddIn xai_allocation_fmin(
