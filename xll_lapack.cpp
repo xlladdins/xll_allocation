@@ -200,7 +200,7 @@ AddIn xai_blas_matrix(
 		})
 	.Uncalced()
 	.Category("BLAS")
-	.FunctionHelp("Return a temporary handle to a BLAS matrix.")
+	.FunctionHelp("Return a temporary handle to the transpose of a BLAS matrix.")
 );
 HANDLEX WINAPI xll_blas_matrix(_FPX* pa)
 {
@@ -209,7 +209,7 @@ HANDLEX WINAPI xll_blas_matrix(_FPX* pa)
 
 	try {
 		blas::matrix<double> a = fpmatrix(pa);
-		a = a.transpose();
+		a = transpose(a);
 		handle<blas::matrix<double>> h(new blas::matrix<double>(a));
 		ensure(h);
 		result = h.get();
@@ -284,9 +284,9 @@ _FPX* WINAPI xll_blas_tpmv(_FPX* pa, _FPX* px, BOOL upper, BOOL trans)
 		c.resize(px->rows, px->columns);
 		auto c_ = fpvector(c.get());
 		c_.copy(n, px->array);
-		blas::tp a(n, pa->array, upper ? CblasUpper : CblasLower);
+		blas::tp<double> a(blas::matrix(n, pa->array), upper ? CblasUpper : CblasLower, CblasNonUnit);
 		if (trans) {
-			blas::tpmv(a.transpose(), c_);
+			blas::tpmv(transpose(a), c_);
 		}
 		else {
 			blas::tpmv(a, c_);
@@ -462,7 +462,7 @@ _FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
 		auto d = sqrt(1 + 8 * m);
 		int n = static_cast<int>((-1 + d) / 2);
 
-		blas::tp a(n, pa->array, upper ? CblasUpper : CblasLower);
+		blas::tp a(blas::matrix(n, pa->array), upper ? CblasUpper : CblasLower, CblasNonUnit);
 		pptrf(a);
 	}
 	catch (const std::exception& ex) {

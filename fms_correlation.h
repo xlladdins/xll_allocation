@@ -1,4 +1,5 @@
 // fms_correlation.h - correlation matrix
+#if 0
 #pragma once
 #include <valarray>
 #include "fms_blas/fms_lapack.h"
@@ -13,13 +14,13 @@ using the Cholesky decomposition of the correlation matrix. The rows
 of the lower decomposition are the \((e_i\).
 )xyzyx";
 	template<class X = double>
-	class correlation : public blas::matrix<X> {
-		std::valarray<X> _e; // lower Cholesky factor
+	class correlation {
+		blas::vector<X> _e; // lower Cholesky factor
+		blas::tp<X> L;
 	public:
 		using blas::matrix<X>::operator();
 		using blas::matrix<X>::row;
 		using blas::matrix<X>::rows;
-		using blas::matrix<X>::transpose;
 
 		static inline const char doc[] = R"xyzyx(
 		Packed rows of the correlation matrix without the unit diagonal.
@@ -127,3 +128,4 @@ of the lower decomposition are the \((e_i\).
 	};
 
 } // namespace fms
+#endif // 0

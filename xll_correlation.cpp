@@ -1,4 +1,5 @@
 // xll_correlation.cpp - matrix correlation
+#if 0
 #include "fms_correlation.h"
 #include "xll/xll/xll.h"
 
@@ -33,7 +34,7 @@ HANDLEX WINAPI xll_correlation_(LONG n, const _FPX* prho)
 
 	return h;
 }
-#if 0
+
 AddIn xai_correlation(
 	Function(XLL_FPX, "xll_correlation", "XLL.CORRELATION")
 	.Arguments({
