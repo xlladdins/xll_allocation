@@ -58,23 +58,31 @@ inline blas::matrix<double> fpmatrix(_FPX* pa)
 AddIn xai_project(
 	Function(XLL_FPX, "xll_project", CATEGORY ".PROJECT")
 	.Arguments({
-		Arg(XLL_FPX, "z", "is a vector."),
 		Arg(XLL_FPX, "x", "is a vector."),
-		Arg(XLL_FPX, "y", "is a vector."),
-		Arg(XLL_DOUBLE, "a", "is a number."),
-		Arg(XLL_DOUBLE, "b", "is a number."),
+		Arg(XLL_FPX, "A", "is a matrix."),
+		Arg(XLL_FPX, "b", "is a vector."),
 		})
 	.Category(CATEGORY)
-	.FunctionHelp("Project z onto z'x = a, z'y = b.")
+	.FunctionHelp("Project x onto {z : Az = b}.")
 );
-_FPX* WINAPI xll_project(_FPX* pz, _FPX* px, _FPX* py, double a, double b)
+_FPX* WINAPI xll_project(_FPX* px, _FPX* pA, _FPX* pb)
 {
 #pragma XLLEXPORT
 	try {
-		ensure(size(*pz) == size(*px));
-		ensure(size(*px) == size(*py));
-		auto z = fpvector(pz);
-		project(fpvector(px), fpvector(py), a, b, z);
+		ensure(size(*px) == (unsigned)pA->columns);
+		ensure(size(*pb) == (unsigned)pA->rows);
+		int n = pA->rows;
+		int m = pA->columns;
+		auto x = fpvector(px);
+		if (1 == n) {
+			project(fpvector(pA), pb->array[0], x);
+		}
+		else if (2 == n) {
+			project(blas::vector(m, &index(*pA, 0, 0)), blas::vector(m, &index(*pA, 1, 0)), pb->array[0], pb->array[1], x);
+		}
+		else {
+			project(fpmatrix(pA), fpvector(pb), x);
+		}
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -82,7 +90,7 @@ _FPX* WINAPI xll_project(_FPX* pz, _FPX* px, _FPX* py, double a, double b)
 		return nullptr;
 	}
 
-	return pz;
+	return px;
 }
 
 AddIn xai_project_pi(
@@ -144,11 +152,46 @@ double WINAPI xll_allocation_value(HANDLEX h, double tau, _FPX* pxi)
 	return val;
 }
 
+AddIn xai_allocation_gradient(
+	Function(XLL_FPX, "xll_allocation_gradient", CATEGORY ".ALLOCATION.GRADIENT")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		Arg(XLL_FPX, "x", "is a vector of xi, lambda"),
+		Arg(XLL_BOOL, "_unit", "is an optional unit portfolio indicator."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the gradient of the portfolio.")
+	.Documentation(R"xyzyx(
+Return \(\xi\cdot E[R] - \tau (\xi'V\xi)/2\).
+)xyzyx")
+);
+_FPX* WINAPI xll_allocation_gradient(HANDLEX h, double tau, _FPX* pxi, BOOL unit)
+{
+#pragma XLLEXPORT
+	static FPX g;
+
+	try {
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		ensure((int)size(*pxi) == h_->n + unit);
+		g.resize(1, h_->n + unit);
+		vec g_ = fpvector(g.get());
+		h_->gradient(tau, fpvector(pxi), g_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+	}
+
+	return g.get();
+}
+
 AddIn xai_allocation_optimize(
 	Function(XLL_FPX, "xll_allocation_optimize", CATEGORY ".ALLOCATION.OPTIMIZE")
 	.Arguments({
 		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
 		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		Arg(XLL_BOOL, "_unit", "optional indicator for unit initial portfolio.")
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Return the optimum portfolio.")
@@ -156,7 +199,7 @@ AddIn xai_allocation_optimize(
 Return \(V^{-1}E[R]/\tau).
 )xyzyx")
 );
-_FPX* WINAPI xll_allocation_optimize(HANDLEX h, double tau)
+_FPX* WINAPI xll_allocation_optimize(HANDLEX h, double tau, BOOL unit)
 {
 #pragma XLLEXPORT
 	static FPX xi;
@@ -164,7 +207,7 @@ _FPX* WINAPI xll_allocation_optimize(HANDLEX h, double tau)
 	try {
 		handle<fms::allocation> h_(h);
 		ensure(h_);
-		xi.resize(1, h_->size());
+		xi.resize(1, h_->size() + unit);
 		auto xi_ = fpvector(xi.get());
 		h_->optimize(tau, xi_);
 	}

@@ -514,6 +514,44 @@ _FPX* WINAPI xll_lapack_potri(_FPX* pa, BOOL lower)
 	return pa;
 }
 
+#define POTRS_TOPIC "https://software.intel.com/content/www/us/en/develop/documentation/" \
+	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
+	"lapack-linear-equation-computational-routines/matrix-inversion-lapack-computational-routines/potrs.html"
+
+AddIn xai_lapack_potrs(
+	Function(XLL_FPX, "xll_lapack_potrs", "LAPACK.POTRS")
+	.Arguments({
+		Arg(XLL_FPX, "a", "is a matrix."),
+		Arg(XLL_FPX, "b", "is a matrix."),
+		Arg(XLL_BOOL, "_lower", "is an optional boolean indicating lower triangular data. Default is upper."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Solves AX = B with a Cholesky-factored positive-definite coefficient matrix.")
+	//.HelpTopic(POTRS_TOPIC)
+	.Documentation(R"(
+
+)")
+);
+_FPX* WINAPI xll_lapack_potrs(_FPX* pa, _FPX* pb, BOOL lower)
+{
+#pragma XLLEXPORT
+	try {
+		ensure(pa->columns == pa->rows);
+		ensure(pa->rows == pb->rows)
+
+		auto a = fpmatrix(pa);
+		auto b = fpmatrix(pb);
+		potrs(lower ? CblasLower : CblasUpper, a, b);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pb;
+}
+
 AddIn xai_lapack_quad(
 	Function(XLL_DOUBLE, "xll_lapack_quad", "LAPACK.QUAD")
 	.Arguments({
