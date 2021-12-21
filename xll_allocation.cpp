@@ -220,6 +220,49 @@ _FPX* WINAPI xll_allocation_optimize(HANDLEX h, double tau, BOOL unit)
 	return xi.get();
 }
 
+AddIn xai_allocation_optimum(
+	Function(XLL_FPX, "xll_allocation_optimum", CATEGORY ".ALLOCATION.OPTIMUM")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		Arg(XLL_FPX, "xi", "is the initial portfolio guess."),
+		Arg(XLL_DOUBLE, "_alpha", "optional step size. Default is 1."),
+		Arg(XLL_DOUBLE, "_eps", "optional absolute convergence criteria. Default is 1e-8."),
+		Arg(XLL_LONG, "_iter", "optional iteration count. Default is 100."),
+		})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the optimum portfolio.")
+	.Documentation(R"xyzyx(
+Return \(V^{-1}E[R]/\tau).
+)xyzyx")
+);
+_FPX* WINAPI xll_allocation_optimum(HANDLEX h, double tau, _FPX* pxi, double alpha, double eps, LONG iter)
+{
+#pragma XLLEXPORT
+	try {
+		if (alpha <= 0) {
+			alpha = 1;
+		}
+		if (eps <= 0) {
+			eps = 1e-8;
+		}
+		if (iter <= 0) {
+			iter = 100;
+		}
+		
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		auto xi = fpvector(pxi);
+		h_->optimum(tau, xi, alpha, eps, iter);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pxi;
+}
 AddIn xai_allocation_fmin(
 	Function(XLL_DOUBLE, "xll_allocation_fmin", CATEGORY ".ALLOCATION.FMIN")
 	.Arguments({
