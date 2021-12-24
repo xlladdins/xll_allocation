@@ -59,30 +59,28 @@ AddIn xai_project(
 	Function(XLL_FPX, "xll_project", CATEGORY ".PROJECT")
 	.Arguments({
 		Arg(XLL_FPX, "x", "is a vector."),
+		Arg(XLL_FPX, "c", "is a vector."),
 		Arg(XLL_FPX, "A", "is a matrix."),
 		Arg(XLL_FPX, "b", "is a vector."),
 		})
 	.Category(CATEGORY)
-	.FunctionHelp("Project x onto {z : Az = b}.")
+	.FunctionHelp("Minimize ||x - c|| given Ax = b.")
 );
-_FPX* WINAPI xll_project(_FPX* px, _FPX* pA, _FPX* pb)
+_FPX* WINAPI xll_project(_FPX* px, _FPX* pc, _FPX* pA, _FPX* pb)
 {
 #pragma XLLEXPORT
 	try {
 		ensure(size(*px) == (unsigned)pA->columns);
 		ensure(size(*pb) == (unsigned)pA->rows);
-		int n = pA->rows;
-		int m = pA->columns;
+
 		auto x = fpvector(px);
-		if (1 == n) {
-			project(fpvector(pA), pb->array[0], x);
-		}
-		else if (2 == n) {
-			project(blas::vector(m, &index(*pA, 0, 0)), blas::vector(m, &index(*pA, 1, 0)), pb->array[0], pb->array[1], x);
-		}
-		else {
-			project(fpmatrix(pA), fpvector(pb), x);
-		}
+		auto c = fpvector(pc);
+		auto A = fpmatrix(pA);
+		auto b = fpvector(pb);
+		int info = project(c, A, b, x);
+		ensure(info >= 0 || !__FUNCTION__ ": illegal parameter value");
+		ensure(info != 1 || !__FUNCTION__ ": upper triangular factor is singular");
+		ensure(info != 2 || !__FUNCTION__ ": trapezoidal factor is singular")
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
