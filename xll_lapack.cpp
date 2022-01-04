@@ -435,47 +435,6 @@ _FPX* WINAPI xll_lapack_potrf(_FPX* pa, BOOL upper, BOOL nofill)
 	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
 	"lapack-linear-equation-computational-routines/matrix-factorization-lapack-computational-routines/pptrf.html"
 
-AddIn xai_lapack_pptrf(
-	Function(XLL_FPX, "xll_lapack_pptrf", "LAPACK.PPTRF")
-	.Arguments({
-		Arg(XLL_FPX, "a", "is a matrix."),
-		Arg(XLL_BOOL, "_upper", "is an optional boolean indicating upper packed matrix. Default is lower."),
-		})
-		.Category(CATEGORY)
-	.FunctionHelp("Return the packed Cholesky decomposition of a.")
-	//.HelpTopic(PPTRF_TOPIC)
-	.Documentation(R"(
-This function calculates the Cholesky decomposition of a packed symmetric positive definite matrix \(A\).
-The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
-prime indicates matrix transpose. The matrix must be in packed format.
-)")
-);
-_FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
-{
-#pragma XLLEXPORT
-	try {
-		int m = size(*pa);
-
-		// m = n(n+1)/2
-		// n^2 + n - 2m = 0
-		// b^2 - 4ac = 1 + 8m
-		auto d = sqrt(1 + 8 * m);
-		int n = static_cast<int>((-1 + d) / 2);
-
-		blas::tp a(blas::matrix(n, pa->array), upper ? CblasUpper : CblasLower, CblasNonUnit);
-		pptrf(a);
-	}
-	catch (const std::exception& ex) {
-		XLL_ERROR(ex.what());
-
-		return nullptr;
-	}
-
-	return pa;
-}
-#if 0
-#endif // 0
-
 #define POTRI_TOPIC "https://software.intel.com/content/www/us/en/develop/documentation/" \
 	"onemkl-developer-reference-c/top/lapack-routines/lapack-linear-equation-routines/" \
 	"lapack-linear-equation-computational-routines/matrix-inversion-lapack-computational-routines/potri.html"
@@ -551,6 +510,84 @@ _FPX* WINAPI xll_lapack_potrs(_FPX* pa, _FPX* pb, BOOL lower)
 
 	return pb;
 }
+
+AddIn xai_lapack_pptrf(
+	Function(XLL_FPX, "xll_lapack_pptrf", "LAPACK.PPTRF")
+	.Arguments({
+		Arg(XLL_FPX, "a", "is a matrix."),
+		Arg(XLL_BOOL, "_upper", "is an optional boolean indicating upper packed matrix. Default is lower."),
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Return the packed Cholesky decomposition of a.")
+	//.HelpTopic(PPTRF_TOPIC)
+	.Documentation(R"(
+This function calculates the Cholesky decomposition of a packed symmetric positive definite matrix \(A\).
+The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
+prime indicates matrix transpose. The matrix must be in packed format.
+)")
+);
+_FPX* WINAPI xll_lapack_pptrf(_FPX* pa, BOOL upper)
+{
+#pragma XLLEXPORT
+	try {
+		int m = size(*pa);
+
+		// m = n(n+1)/2
+		// n^2 + n - 2m = 0
+		// b^2 - 4ac = 1 + 8m
+		auto d = sqrt(1 + 8 * m);
+		int n = static_cast<int>((-1 + d) / 2);
+
+		blas::tp<double> a(blas::matrix(n, pa->array), upper ? CblasUpper : CblasLower, CblasNonUnit);
+		pptrf(a);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pa;
+}
+
+AddIn xai_lapack_pptrs(
+	Function(XLL_FPX, "xll_lapack_pptrs", "LAPACK.PPTRS")
+	.Arguments({
+		Arg(XLL_FPX, "a", "is a matrix."),
+		Arg(XLL_FPX, "b", "is a matrix."),
+		Arg(XLL_BOOL, "_upper", "is an optional boolean indicating upper packed matrix. Default is lower."),
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Solves AX = B with a Cholesky-factored packed positive-definite coefficient matrix.")
+	//.HelpTopic(PPTRF_TOPIC)
+	.Documentation(R"(
+This function calculates the Cholesky decomposition of a packed symmetric positive definite matrix \(A\).
+The upper decomposition statisfies \(A = U' U\) and the lower satisifes \(A = L L'\) where
+prime indicates matrix transpose. The matrix must be in packed format.
+)")
+);
+_FPX* WINAPI xll_lapack_pptrs(_FPX* pa, _FPX* pb, BOOL upper)
+{
+#pragma XLLEXPORT
+	try {
+		int n = size(*pb);
+
+		blas::tp<double> a(blas::matrix(n, pa->array), upper ? CblasUpper : CblasLower, CblasNonUnit);
+		blas::matrix b(pb->rows, pb->columns, pb->array);
+		pptrs(a, b);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pb;
+}
+#if 0
+#endif // 0
+
+
 
 AddIn xai_lapack_quad(
 	Function(XLL_DOUBLE, "xll_lapack_quad", "LAPACK.QUAD")
