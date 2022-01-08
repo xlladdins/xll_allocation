@@ -72,10 +72,7 @@ _FPX* WINAPI xll_project(_FPX* pc, _FPX* pA, _FPX* pb)
 		auto c = fpvector(pc);
 		auto A = fpmatrix(pA);
 		auto b = fpvector(pb);
-		int info = project(c, A, b);
-		ensure(info >= 0 || !__FUNCTION__ ": illegal parameter value");
-		ensure(info != 1 || !__FUNCTION__ ": upper triangular factor is singular");
-		ensure(info != 2 || !__FUNCTION__ ": trapezoidal factor is singular")
+		project(c, A, b, c);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -90,21 +87,24 @@ AddIn xai_project_pi(
 	Function(XLL_FPX, "xll_project_pi", CATEGORY ".PI")
 	.Arguments({
 		Arg(XLL_FPX, "c", "is a vector."),
-		Arg(XLL_FPX, "a", "is a vector."),
-		Arg(XLL_DOUBLE, "b", "is a number."),
+		Arg(XLL_FPX, "a", "is a matrix."),
+		Arg(XLL_FPX, "b", "is a vector."),
+		Arg(XLL_FPX, "J", "is a mask of."),
 		})
 	.Category(CATEGORY)
 	.FunctionHelp("Minimize ||x - c|| given a'x = b, x >= 0.")
 );
-_FPX* WINAPI xll_project_pi(_FPX* pc, _FPX* pa, double b)
+_FPX* WINAPI xll_project_pi(_FPX* pc, _FPX* pa, _FPX* pb, _FPX* pJ)
 {
 #pragma XLLEXPORT
 	static FPX xi;
 
 	try {
 		auto c = fpvector(pc);
-		auto a = fpvector(pa);
-		pi(c, a, b);
+		auto a = fpmatrix(pa);
+		auto b = fpvector(pb);
+		auto J = fpvector(pJ);
+		project(c, a, b, J, c);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
