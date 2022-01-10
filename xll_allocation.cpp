@@ -83,6 +83,33 @@ _FPX* WINAPI xll_project(_FPX* pc, _FPX* pA, _FPX* pb)
 	return pc;
 }
 
+AddIn xai_project0(
+	Function(XLL_FPX, "xll_project0", CATEGORY ".PROJECT0")
+	.Arguments({
+		Arg(XLL_FPX, "c", "is a vector."),
+		Arg(XLL_FPX, "A", "is a matrix."),
+		Arg(XLL_FPX, "b", "is a vector."),
+		})
+		.Category(CATEGORY)
+	.FunctionHelp("Minimize ||x - c|| given Ax = b and x >= 0.")
+);
+_FPX* WINAPI xll_project0(_FPX* pc, _FPX* pA, _FPX* pb)
+{
+#pragma XLLEXPORT
+	try {
+		auto c = fpvector(pc);
+		auto A = fpmatrix(pA);
+		auto b = fpvector(pb);
+		project0(c, A, b, c);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return pc;
+}
 AddIn xai_project_pi(
 	Function(XLL_FPX, "xll_project_pi", CATEGORY ".PI")
 	.Arguments({
