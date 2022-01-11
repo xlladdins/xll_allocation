@@ -584,8 +584,6 @@ _FPX* WINAPI xll_lapack_pptrs(_FPX* pa, _FPX* pb, BOOL upper)
 
 	return pb;
 }
-#if 0
-#endif // 0
 
 
 
