@@ -272,7 +272,43 @@ _FPX* WINAPI xll_allocation_optimize2(HANDLEX h, double tau, BOOL pos)
 
 	return xi.get();
 }
+AddIn xai_allocation_optimize3(
+	Function(XLL_FPX, "xll_allocation_optimize3", CATEGORY ".ALLOCATION.OPTIMIZE3")
+	.Arguments({
+		Arg(XLL_HANDLEX, "h", "is a handle returned by ALLOCATION."),
+		Arg(XLL_DOUBLE, "tau", "is the risk parameter."),
+		Arg(XLL_DOUBLE, "alpha", "global weight."),
+		Arg(XLL_FPX, "w", "individual position weights."),
+		Arg(XLL_FPX, "eta", "individual positon location."),
+	})
+	.Category(CATEGORY)
+	.FunctionHelp("Return the optimum portfolio.")
+	.Documentation(R"xyzyx(
+Return \(V^{-1}E[R]/\tau).
+)xyzyx")
+);
+_FPX* WINAPI xll_allocation_optimize3(HANDLEX h, double tau, double alpha, _FPX* pw, _FPX* peta)
+{
+#pragma XLLEXPORT
+	static FPX xi;
 
+	try {
+		handle<fms::allocation> h_(h);
+		ensure(h_);
+		xi.resize(1, h_->size());
+		auto xi_ = fpvector(xi.get());
+		auto w = fpvector(pw);
+		auto eta = fpvector(peta);
+		h_->optimize3(tau, alpha, w, eta, xi_);
+	}
+	catch (const std::exception& ex) {
+		XLL_ERROR(ex.what());
+
+		return nullptr;
+	}
+
+	return xi.get();
+}
 AddIn xai_allocation_optimum(
 	Function(XLL_FPX, "xll_allocation_optimum", CATEGORY ".ALLOCATION.OPTIMUM")
 	.Arguments({
