@@ -128,7 +128,7 @@ inline blas::matrix<double> fpmatrix(_FPX* pa, CBLAS_TRANSPOSE trans = CblasNoTr
 {
 	if (size(*pa) == 1) {
 		handle<blas::matrix<double>> a(pa->array[0]);
-		return a.ptr() ? *a.ptr() : blas::matrix<double>{};
+		return a.ptr() ? *a.ptr() : blas::matrix<double>(1, 1, pa->array);
 	}
 	
 	return blas::matrix<double>(pa->rows, pa->columns, pa->array, trans);
@@ -229,6 +229,9 @@ AddIn xai_blas_gemm(
 	.Arguments({
 		Arg(XLL_FPX, "a", "is a matrix."),
 		Arg(XLL_FPX, "b", "is a matrix."),
+		Arg(XLL_FPX, "c", "is an optional matrix."),
+		Arg(XLL_DOUBLE, "_alpha", "is an optional scaling factor. Default is 1."),
+		Arg(XLL_DOUBLE, "_beta", "is an optional factor. Default is 0.")
 		})
 	.Category("BLAS")
 	.FunctionHelp("Return the matrix product of a and b.")
@@ -236,18 +239,25 @@ AddIn xai_blas_gemm(
 Compute the matrix product \(c_{i,j} = \sum_k a_{i,k} b_{k,j}\).
 )")
 );
-_FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
+_FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb, _FPX* pc, double alpha, double beta)
 {
 #pragma XLLEXPORT
 	static FPX c;
 
 	try {
+		if (alpha == 0) {
+			alpha = 1;
+		}
 		auto a = fpmatrix(pa);
 		auto b = fpmatrix(pb);
-		ensure(a.columns() == b.rows());
+		blas::matrix<double> c_;
+		if (size(*pc) == 1 and pc->array[0] == 0) {
+			c.resize(a.rows(), b.columns());
+			pc = c.get();
+		}
+		c_ = fpmatrix(pc);
 
-		c.resize(a.rows(), b.columns());
-		blas::gemm(a, b, fpmatrix(c.get()));
+		blas::gemm(a, b, c_, alpha, beta);
 	}
 	catch (const std::exception& ex) {
 		XLL_ERROR(ex.what());
@@ -255,7 +265,7 @@ _FPX* WINAPI xll_blas_gemm(_FPX* pa, _FPX* pb)
 		return nullptr;
 	}
 
-	return c.get();
+	return pc;
 }
 
 AddIn xai_blas_tpmv(
