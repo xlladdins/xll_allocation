@@ -128,7 +128,10 @@ inline blas::matrix<double> fpmatrix(_FPX* pa, CBLAS_TRANSPOSE trans = CblasNoTr
 {
 	if (size(*pa) == 1) {
 		handle<blas::matrix<double>> a(pa->array[0]);
-		return a.ptr() ? *a.ptr() : blas::matrix<double>(1, 1, pa->array);
+
+		if (a) {
+			return *a.ptr();
+		}
 	}
 	
 	return blas::matrix<double>(pa->rows, pa->columns, pa->array, trans);
