@@ -204,7 +204,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_drop.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_index.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_join.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_sequence.cpp" />
     <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_sort.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_take.cpp" />
+    <ClCompile Include="..\..\..\xlladdins\xll_array\xll_array_unique.cpp" />
     <ClCompile Include="xll_allocation.cpp" />
     <ClCompile Include="xll_correlation.cpp" />
     <ClCompile Include="xll_covariance.cpp" />

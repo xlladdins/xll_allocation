@@ -49,6 +49,7 @@ void LAPACKE_xerbla(const char* name, lapack_int info)
 	XLL_ERROR(buf);
 }
 
+#if 0
 AddIn xai_array_(
 	Function(XLL_HANDLE, "xll_array_", "\\ARRAY")
 	.Arguments({
@@ -114,21 +115,27 @@ _FPX* WINAPI xll_array_get(HANDLEX h)
 
 	return pa;
 }
-
+#endif // 0
 
 constexpr long ARRAY_MAX = 1 << 20; // maximum row/column size
 
 // non-owning vector
 inline blas::vector<double> fpvector(_FPX* pa)
 {
+	if (size(*pa) == 1 and pa->array[0] != 0) {
+		handle<blas::vector<double>> v(pa->array[0]);
+		if (v) {
+			return *v.ptr();
+		}
+	}
+
 	return blas::vector<double>(size(*pa), pa->array, 1);
 }
 // non-owning matrix
 inline blas::matrix<double> fpmatrix(_FPX* pa, CBLAS_TRANSPOSE trans = CblasNoTrans)
 {
-	if (size(*pa) == 1) {
+	if (size(*pa) == 1 and pa->array[0] != 0) {
 		handle<blas::matrix<double>> a(pa->array[0]);
-
 		if (a) {
 			return *a.ptr();
 		}
